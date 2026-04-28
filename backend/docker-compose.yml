@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: cis-backend
+    ports:
+      - "8001:8001"
+    environment:
+      - ENV=production
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/app/uploads
+      - .:/app  # For development - remove in production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add nginx for production
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: cis-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped

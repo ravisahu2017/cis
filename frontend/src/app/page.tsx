@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, TrendingUp, AlertTriangle, Clock, Users, Settings, Send, Bot, User } from 'lucide-react';
+import { backendApi } from '@/utils/api';
+import { FileText, TrendingUp, AlertTriangle, Clock, Users, Settings, Send, Bot, User, Upload, X, File, Loader2 } from 'lucide-react';
 
 interface DashboardTile {
   id: string;
@@ -21,6 +22,15 @@ interface ChatMessage {
   timestamp: string;
 }
 
+interface UploadedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+  file: File; // Store actual File object for API upload
+}
+
 export default function Home() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -31,6 +41,10 @@ export default function Home() {
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<any>(null);
 
   const dashboardTiles: DashboardTile[] = [
     {
@@ -129,6 +143,124 @@ export default function Home() {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    handleFiles(files);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      handleFiles(files);
+    }
+  };
+
+  const handleFiles = (files: File[]) => {
+    const newFiles: UploadedFile[] = files.map(file => ({
+      id: Date.now().toString() + Math.random().toString(),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      uploadedAt: new Date().toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      }),
+      file: file // Store actual File object
+    }));
+
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const removeFile = (fileId: string) => {
+    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const analyzeContracts = async () => {
+    if (uploadedFiles.length === 0) return;
+    
+    setIsAnalyzing(true);
+    
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Add files to FormData - backend expects 'files' field with actual File objects
+      uploadedFiles.forEach((uploadedFile) => {
+        formData.append('files', uploadedFile.file);
+      });
+      
+
+      
+      // Call backend API
+      const response = await backendApi.postFormData('/analyze-contracts', formData);
+      
+      if (response.success) {
+        setAnalysisResults(response.data);
+        
+        // Update chat with analysis results
+        const analysisMessage: ChatMessage = {
+          id: Date.now().toString(),
+          type: 'bot',
+          message: `Analysis complete! I've analyzed ${uploadedFiles.length} contract(s). Key findings:\n\n• Compliance Score: ${response.data.compliance_score || 'N/A'}%\n• Risk Level: ${response.data.risk_level || 'N/A'}\n• Clauses Found: ${response.data.clauses_count || 'N/A'}\n• Recommendations: ${response.data.recommendations?.length || 0}`,
+          timestamp: new Date().toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+          })
+        };
+        
+        setChatMessages(prev => [...prev, analysisMessage]);
+      } else {
+        throw new Error(response.error || 'Analysis failed');
+      }
+    } catch (error) {
+      console.error('Contract analysis error:', error);
+      
+      // Update chat with error message
+      const errorMessage: ChatMessage = {
+        id: Date.now().toString(),
+        type: 'bot',
+        message: `Sorry, I encountered an error while analyzing the contracts: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        timestamp: new Date().toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        })
+      };
+      
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const clearAllFiles = () => {
+    setUploadedFiles([]);
+    setAnalysisResults(null);
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F8F8] text-[#1A1A1A]">
       {/* Navigation */}
@@ -212,6 +344,112 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Upload Contract Section */}
+            <div className="mt-8">
+              <h2 className="text-xl font-light mb-4">Upload Contracts</h2>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+                {/* Upload Area */}
+                <div
+                  className={`p-8 border-2 border-dashed rounded-xl transition-colors ${
+                    isDragging 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <div className="text-center">
+                    <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <h3 className="text-lg font-medium mb-2">
+                      {isDragging ? 'Drop files here' : 'Upload Contract Documents'}
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      Drag and drop files here, or click to browse
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileInput}
+                      accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.tiff,.bmp"
+                      className="hidden"
+                      id="file-input"
+                    />
+                    <label
+                      htmlFor="file-input"
+                      className="inline-flex items-center px-6 py-3 bg-[#1A1A1A] text-white rounded-xl cursor-pointer hover:bg-[#2A2A2A] transition-colors"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Choose Files
+                    </label>
+                    <p className="text-xs text-gray-400 mt-4">
+                      Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG, TIFF, BMP (Max 10MB)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Uploaded Files List */}
+                {uploadedFiles.length > 0 && (
+                  <div className="p-6 border-t border-gray-200">
+                    <h4 className="font-medium mb-4">Uploaded Files ({uploadedFiles.length})</h4>
+                    <div className="space-y-3">
+                      {uploadedFiles.map((file) => (
+                        <motion.div
+                          key={file.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <File className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{file.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {formatFileSize(file.size)} • {file.uploadedAt}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeFile(file.id)}
+                            className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          >
+                            <X className="w-4 h-4 text-gray-500" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
+                    {uploadedFiles.length > 0 && (
+                      <div className="mt-4 flex space-x-3">
+                        <button
+                          onClick={analyzeContracts}
+                          disabled={isAnalyzing}
+                          className="flex-1 px-4 py-2 bg-[#1A1A1A] text-white rounded-lg hover:bg-[#2A2A2A] transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Analyzing...
+                            </>
+                          ) : (
+                            'Analyze Contracts'
+                          )}
+                        </button>
+                        <button
+                          onClick={clearAllFiles}
+                          disabled={isAnalyzing}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

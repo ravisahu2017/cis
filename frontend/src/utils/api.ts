@@ -4,8 +4,6 @@ interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
-  imageUrl?: string;
-  [key: string]: any;
 }
 
 interface RequestOptions {

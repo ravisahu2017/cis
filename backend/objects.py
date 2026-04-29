@@ -5,9 +5,11 @@ from datetime import date
 class ClauseRisk(BaseModel):
     clause_type: str = Field(description="e.g., Liability, Payment, SLA, IP")
     content: str = Field(description="The extracted text of the clause")
+    risk_category: str = Field(description="e.g., Legal, Financial, Operational")
     risk_score: int = Field(description="Score from 0-100")
     risk_tag: str = Field(description="e.g., High, Medium, Low")
     recommendation: Optional[str] = Field(description="AI-generated fix")
+
 
 class ClauseAnalysisResult(BaseModel):
     clauses: List[ClauseRisk] = Field(description="List of analyzed clauses with risk scores")

@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from typing import List
 import mimetypes
 from tools import image_util
-import injestion
+import contract_crew
 from tools.s3_util import upload_file_object
 from tools.logger import logger
 
@@ -24,7 +24,7 @@ from tools.logger import logger
 # Load environment variables
 load_dotenv()
 
-app = FastAPI(title="Apparel Agent API")
+app = FastAPI(title="CIS API")
 
 # Add CORS middleware
 app.add_middleware(
@@ -68,8 +68,6 @@ async def upload(files: List[UploadFile] = File(...)):
             # Create a file-like object from the content
             file_object = io.BytesIO(file_content)
 
-            
-
             # Determine content type
             content_type, _ = mimetypes.guess_type(file.filename)
             if content_type is None:
@@ -93,7 +91,7 @@ async def upload(files: List[UploadFile] = File(...)):
             logger.info(f"Successfully uploaded {file.filename} to {result_url}")
             # Save to temp file for ingestion
             temp_file_path = image_util.save_to_temp(file_content, "contract_ingestion", "pdf")
-            contents = injestion.ingest_contract(temp_file_path)
+            contents = contract_crew.read_contract_with_crewai(temp_file_path)
             logger.info(f"Contract ingested: {contents}")
             
 
@@ -117,7 +115,7 @@ async def health_check():
     """
     Health check endpoint
     """
-    return {"status": "healthy", "service": "apparel-agent-api"}
+    return {"status": "healthy", "service": "cis-api"}
 
 if __name__ == "__main__":
     import uvicorn

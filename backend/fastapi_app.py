@@ -92,12 +92,7 @@ async def upload(files: List[UploadFile] = File(...)):
             # Save to temp file for ingestion
             temp_file_path = image_util.save_to_temp(file_content, "contract_ingestion", "pdf")
             contents = contract_crew.read_contract_with_crewai(temp_file_path)
-            logger.info(f"Contract metadata extracted: {contents}")
             
-
-        
-        logger.info(f"Upload completed successfully. {len(uploaded_files)} files processed.")
-        
         return {
             "success": True,
             "message": f"Successfully uploaded {len(uploaded_files)} files",

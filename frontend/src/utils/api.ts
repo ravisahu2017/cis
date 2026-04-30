@@ -443,6 +443,8 @@ class ApiService {
 
 
 // For specific backend servers
-export const backendApi = new ApiService('http://localhost:8001');
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+export const backendApi = new ApiService(backendUrl);
+
 
 export default ApiService;

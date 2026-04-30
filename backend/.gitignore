@@ -216,5 +216,6 @@ old_v2/
 study/
 .DS_Store
 
-
+**.pem
+deploy.sh
 *nogit*

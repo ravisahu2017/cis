@@ -84,7 +84,7 @@ export default function Home() {
           subtitle: getRiskLevel(analysisResults.overall_risk_score),
           icon: <AlertTriangle className="w-6 h-6" />,
           color: getRiskColor(analysisResults.overall_risk_score),
-          trend: analysisResults.risk_tag || 'Calculated'
+          trend: 'Calculated'
         },
         {
           id: '2',

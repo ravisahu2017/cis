@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { backendApi } from '@/utils/api';
 import { FileText, TrendingUp, AlertTriangle, Clock, Users, Settings, Send, Bot, User, Upload, X, File, Loader2 } from 'lucide-react';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface DashboardTile {
   id: string;
@@ -377,7 +378,8 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F8F8] text-[#1A1A1A]">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-[#F8F8F8] text-[#1A1A1A]">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-[#E5E5E5]">
         <div className="max-w-full px-6 py-4 flex justify-between items-center">
@@ -849,5 +851,6 @@ export default function Home() {
         </div>
       </main>
     </div>
+    </ErrorBoundary>
   );
 }

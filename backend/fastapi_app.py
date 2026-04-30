@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from typing import List
 import mimetypes
-from tools import image_util
+from tools import file_util, image_util
 import contract_crew
 from tools.s3_util import upload_file_object
 from tools.logger import logger
@@ -90,9 +90,21 @@ async def upload(files: List[UploadFile] = File(...)):
 
             logger.info(f"Successfully uploaded {file.filename} to {result_url}")
             # Save to temp file for ingestion
-            temp_file_path = image_util.save_to_temp(file_content, "contract_ingestion", "pdf")
-            contents = contract_crew.read_contract_with_crewai(temp_file_path)
+
+            file_type = file.filename.split('.')[-1]
+            temp_file_path = image_util.save_to_temp(file_content, "contract_ingestion", file_type)
+            if(file_type == "pdf"):
+                file_content = file_util.read_pdf(temp_file_path)
+            elif(file_type == "docx"):
+                file_content = file_util.read_docx(temp_file_path)
+            elif(file_type == "txt"):
+                file_content = file_util.read_txt(temp_file_path)
+            elif(file_type == "jpg" or file_type == "jpeg" or file_type == "png"):
+                file_content = file_util.read_image(temp_file_path)
+            else:
+                return {"success": False, "message": "Only PDF, DOCX, TXT, JPG, JPEG, and PNG files are supported for now"}
             
+            contents = contract_crew.read_contract_with_crewai(file_content)
         return {
             "success": True,
             "message": f"Successfully uploaded {len(uploaded_files)} files",

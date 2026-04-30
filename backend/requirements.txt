@@ -10,3 +10,6 @@ crewai
 crewai-tools
 boto3
 botocore
+python-docx
+pytesseract
+tesseract

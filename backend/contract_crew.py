@@ -5,28 +5,13 @@ Implements the multi-agent architecture for contract analysis
 
 import os
 import json
-import fitz  # PyMuPDF
+
 from crewai import Agent, Task, Crew, Process
-from crewai.tools import tool
 from crewai.llm import LLM
 from objects import ContractObject, ClauseAnalysisResult
 from tools.logger import logger
+from tools.file_util import read_pdf
 
-@tool("pdf_extraction_tool")
-def pdf_extraction_tool(file_path: str) -> str:
-    """Extract text from PDF file"""
-    try:
-        doc = fitz.open(file_path)
-        text_content = ""
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-            text_content += page.get_text()
-        doc.close()
-        logger.info(f"Extracted {len(text_content)} characters from PDF")
-        return text_content
-    except Exception as e:
-        logger.error(f"Error extracting PDF: {str(e)}")
-        raise e
 
 def get_llm(temperature: float = 0.1):
     return LLM(
@@ -212,27 +197,14 @@ def analyze_contract_clauses(text_content: str) -> any:
     return result_dict
 
 
-def read_contract_with_crewai(file_path: str) -> any:
+def read_contract_with_crewai(text_content: str) -> any:
     """
     Main contract ingestion function using CrewAI multi-agent system
     """
     try:
-        # 1. Extract text from PDF
-        text_content = ""
-        doc = fitz.open(file_path)
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-            text_content += page.get_text()
-        doc.close()
-        
-        logger.info(f"Extracted {len(text_content)} characters from {file_path}")
-        
-        # 2. Analyze clauses using multi-agent crew
         clause_analysis = analyze_contract_clauses(text_content)
-        
         logger.info(f"Successfully created contract object: {clause_analysis}")
         return clause_analysis
-        
     except Exception as e:
         logger.error(f"Error in CrewAI contract ingestion: {str(e)}")
         raise e

@@ -338,7 +338,7 @@ export default function Home() {
         const analysisMessage: ChatMessage = {
           id: Date.now().toString(),
           type: 'bot',
-          message: `Analysis complete! I've analyzed ${uploadedFiles.length} contract(s). Key findings:\n\n• Overall Risk Score: ${response.data.overall_risk_score || 'N/A'}\n• Legal Risk Score: ${response.data.legal_risk_score || 'N/A'}\n• Financial Risk Score: ${response.data.financial_risk_score || 'N/A'}\n• Operational Risk Score: ${response.data.operational_risk_score || 'N/A'}\n• Total Clauses: ${response.data.clauses?.length || 0}\n• High Risk Clauses: ${response.data.clauses?.filter(c => c.risk_tag === 'High').length || 0}`,
+          message: `Analysis complete! I've analyzed ${uploadedFiles.length} contract(s). Key findings:\n\n• Overall Risk Score: ${response.data.overall_risk_score || 'N/A'}\n• Legal Risk Score: ${response.data.legal_risk_score || 'N/A'}\n• Financial Risk Score: ${response.data.financial_risk_score || 'N/A'}\n• Operational Risk Score: ${response.data.operational_risk_score || 'N/A'}\n• Total Clauses: ${response.data.clauses?.length || 0}\n• High Risk Clauses: ${response.data.clauses?.filter((c: Clause) => c.risk_tag === 'High').length || 0}`,
           timestamp: new Date().toLocaleTimeString('en-US', { 
             hour: 'numeric', 
             minute: '2-digit',

@@ -73,6 +73,8 @@ export default function Home() {
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
   const [isClausesCollapsed, setIsClausesCollapsed] = useState(true);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [isChatStreaming, setIsChatStreaming] = useState(false);
+  const [currentStreamingMessage, setCurrentStreamingMessage] = useState<string>('');
 
   // Generate dynamic dashboard tiles based on analysis results
   const getDashboardTiles = (): DashboardTile[] => {
@@ -218,43 +220,101 @@ export default function Home() {
     });
   };
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim()) {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString('en-US', { 
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isChatStreaming) return;
+    
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      message: inputMessage,
+      timestamp: new Date().toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
         hour12: true 
-      });
+      })
+    };
+    
+    setChatMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsChatStreaming(true);
+    setCurrentStreamingMessage('');
+    
+    // Create a placeholder for streaming response
+    const botMessageId = (Date.now() + 1).toString();
+    const botMessagePlaceholder: ChatMessage = {
+      id: botMessageId,
+      type: 'bot',
+      message: '',
+      timestamp: new Date().toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    };
+    
+    setChatMessages(prev => [...prev, botMessagePlaceholder]);
+    
+    try {
+      // Prepare context from analysis results if available
+      const context = analysisResults ? {
+        contract_name: analysisResults.contract_name,
+        overall_risk_score: analysisResults.overall_risk_score,
+        clauses: analysisResults.clauses.map(c => ({
+          type: c.clause_type,
+          risk_score: c.risk_score,
+          risk_tag: c.risk_tag,
+          content: c.content.substring(0, 200) + '...'
+        }))
+      } : null;
       
-      const newMessage: ChatMessage = {
-        id: Date.now().toString(),
-        type: 'user',
+      // Use regular HTTP API for chat
+      const requestData = {
         message: inputMessage,
-        timestamp: timeString
+        context: context,
+        session_id: null,
+        user_id: null
       };
+
+      const response = await backendApi.post('/chat', requestData);
       
-      setChatMessages([...chatMessages, newMessage]);
+      if (response.success && response.data) {
+        const botResponse: ChatMessage = {
+          id: botMessageId,
+          type: 'bot',
+          message: response.data.message || response.data.response || 'I received your message but couldn\'t generate a response.',
+          timestamp: new Date().toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+          })
+        };
+        setChatMessages(prev => prev.map(msg => 
+          msg.id === botMessageId ? botResponse : msg
+        ));
+      } else {
+        throw new Error(response.error || 'Chat request failed');
+      }
       
-      // Simulate bot response
-      setTimeout(() => {
-        const botTime = new Date();
-        const botTimeString = botTime.toLocaleTimeString('en-US', { 
+    } catch (error) {
+      console.error('Chat error:', error);
+      
+      const errorMessage: ChatMessage = {
+        id: botMessageId,
+        type: 'bot',
+        message: `Sorry, I'm having trouble connecting right now. Please try again.`,
+        timestamp: new Date().toLocaleTimeString('en-US', { 
           hour: 'numeric', 
           minute: '2-digit',
           hour12: true 
-        });
-        
-        const botResponse: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          type: 'bot',
-          message: 'I\'m analyzing your request. Let me help you with that contract query.',
-          timestamp: botTimeString
-        };
-        setChatMessages(prev => [...prev, botResponse]);
-      }, 1000);
+        })
+      };
       
-      setInputMessage('');
+      setChatMessages(prev => prev.map(msg => 
+        msg.id === botMessageId ? errorMessage : msg
+      ));
+    } finally {
+      setIsChatStreaming(false);
+      setCurrentStreamingMessage('');
     }
   };
 
@@ -813,7 +873,7 @@ export default function Home() {
                       <Bot className="w-4 h-4 mt-0.5 text-gray-600" />
                     )}
                     <div>
-                      <p className="text-sm">{message.message}</p>
+                      <p className="text-sm whitespace-pre-wrap">{message.message}</p>
                       <p className={`text-xs mt-1 ${
                         message.type === 'user' ? 'text-gray-300' : 'text-gray-500'
                       }`}>
@@ -836,17 +896,28 @@ export default function Home() {
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Ask about contracts, compliance, or analysis..."
-                className="flex-1 px-4 py-3 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                placeholder={isChatStreaming ? "AI is responding..." : "Ask about contracts, compliance, or analysis..."}
+                disabled={isChatStreaming}
+                className="flex-1 px-4 py-3 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleSendMessage}
-                className="px-4 py-3 bg-[#1A1A1A] text-white rounded-xl hover:bg-[#2A2A2A] transition-colors"
+                disabled={isChatStreaming || !inputMessage.trim()}
+                className="px-4 py-3 bg-[#1A1A1A] text-white rounded-xl hover:bg-[#2A2A2A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
-                <Send className="w-4 h-4" />
+                {isChatStreaming ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </button>
             </div>
+            {analysisResults && (
+              <div className="mt-2 text-xs text-gray-500">
+                💡 I can help you analyze uploaded contract. Ask me about risks, clauses, or recommendations.
+              </div>
+            )}
           </div>
         </div>
       </main>

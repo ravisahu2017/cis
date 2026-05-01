@@ -443,7 +443,7 @@ class ApiService {
 
 
 // For specific backend servers
-const backendUrl = 'https://unhappy-edgy-challenge.ngrok-free.dev';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
 export const backendApi = new ApiService(backendUrl);
 
 

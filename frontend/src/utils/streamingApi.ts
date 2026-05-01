@@ -22,78 +22,48 @@ export class StreamingApi {
     this.baseUrl = baseUrl;
   }
 
+
+
   /**
-   * Generate image for a product with streaming responses
+   * Chat with contract analysis using streaming responses
    */
-  async generateProduct(
-    productId: string, 
-    view: 'front' | 'back',
+  async chatWithContract(
+    message: string,
+    context: any = null,
     onProgress: StreamCallback
   ): Promise<void> {
-    const formData = new FormData();
-    formData.append('product_id', productId);
-    formData.append('view', view);
+    const requestData = {
+      message,
+      context,
+      session_id: null,
+      user_id: null
+    };
 
-    await this.streamResponse('/generate', formData, onProgress);
+    await this.streamJsonResponse('/chat', requestData, onProgress);
   }
 
   /**
-   * Generate prompt for a product with streaming responses
+   * Generic streaming response handler for JSON requests
    */
-  async generatePrompt(
-    productId: string, 
-    onProgress: StreamCallback
-  ): Promise<void> {
-    const formData = new FormData();
-    formData.append('productId', productId);
-
-    await this.streamResponse('/generate-prompt', formData, onProgress);
-  }
-
-  /**
-   * Extract design from images with streaming responses
-   */
-  async extractDesign(
-    files: File[], 
-    modelId: string,
-    lighting: string,
-    background: string,
-    onProgress: StreamCallback
-  ): Promise<void> {
-    const formData = new FormData();
-    
-    // Add files
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-    
-    // Add parameters
-    formData.append('modelId', modelId);
-    formData.append('lighting', lighting);
-    formData.append('background', background);
-
-    await this.streamResponse('/extract', formData, onProgress);
-  }
-
-  /**
-   * Generic streaming response handler
-   */
-  private async streamResponse(
+  private async streamJsonResponse(
     endpoint: string, 
-    formData: FormData, 
+    requestData: any, 
     onProgress: StreamCallback
   ): Promise<void> {
     const url = `${this.baseUrl}${endpoint}`;
     
     try {
-      console.log(`Streaming request to: ${url}`);
+      console.log(`Streaming JSON request to: ${url}`);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
 
       const response = await fetch(url, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
         signal: controller.signal,
         mode: 'cors',
         credentials: 'omit',
@@ -179,7 +149,7 @@ export class StreamingApi {
       }
 
     } catch (error) {
-      console.error('Streaming request failed:', error);
+      console.error('Streaming JSON request failed:', error);
       throw error;
     }
   }
@@ -218,4 +188,4 @@ export class StreamingApi {
 }
 
 // Export singleton instance
-export const streamingApi = new StreamingApi('http://localhost:8001');
+export const streamingApi = new StreamingApi(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001');

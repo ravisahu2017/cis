@@ -119,7 +119,11 @@ class ContractRepository:
             # Mark previous versions as not current
             if latest_version:
                 latest_version.is_current = False
-            
+            # Extract metadata_json from kwargs and serialize it
+            kwargs_dict = dict(kwargs)
+            if 'metadata_json' in kwargs_dict and isinstance(kwargs_dict['metadata_json'], dict):
+                kwargs_dict['metadata_json'] = json.dumps(kwargs_dict['metadata_json'])
+ 
             version = ContractVersion(
                 id=str(uuid.uuid4()),
                 contract_id=contract_id,
@@ -128,8 +132,8 @@ class ContractRepository:
                 file_path=file_path,
                 file_hash=file_hash,
                 file_size=len(file_content),
-                content_text=file_content,
-                **kwargs
+                content_text=None,
+                **kwargs_dict
             )
             
             self.session.add(version)
@@ -170,21 +174,21 @@ class ContractRepository:
             logger.error(f"Failed to get version {version_id}: {str(e)}")
             return None
     
-    def get_current_version(self, contract_id: str) -> Optional[ContractVersion]:
-        """Get current version of a contract"""
-        try:
+    def get_current_version(self, contract_id: str):
+        contract = self.get_contract(contract_id)
+        if contract and contract.current_version_id:
             return self.session.query(ContractVersion).filter(
-                ContractVersion.contract_id == contract_id,
-                ContractVersion.is_current == True
+                ContractVersion.id == contract.current_version_id
             ).first()
-        except Exception as e:
-            logger.error(f"Failed to get current version: {str(e)}")
-            return None
+        return None
     
     def find_similar_contracts(self, file_hash: str, user_id: str, threshold: float = 0.9) -> List[ContractRecord]:
         """Find contracts with similar content (for version detection)"""
         try:
-            return self.session.query(ContractRecord).join(ContractVersion).filter(
+            return self.session.query(ContractRecord).join(
+                ContractVersion, 
+                ContractRecord.id == ContractVersion.contract_id
+            ).filter(
                 ContractRecord.user_id == user_id,
                 ContractVersion.file_hash == file_hash,
                 ContractRecord.status != "deleted"
@@ -197,7 +201,10 @@ class ContractRepository:
         """Get contracts expiring within specified days"""
         try:
             cutoff_date = datetime.utcnow() + timedelta(days=days)
-            query = self.session.query(ContractRecord).join(ContractVersion).filter(
+            query = self.session.query(ContractRecord).join(
+                ContractVersion, 
+                ContractRecord.id == ContractVersion.contract_id
+            ).filter(
                 ContractVersion.expiry_date <= cutoff_date,
                 ContractVersion.expiry_date >= datetime.utcnow(),
                 ContractRecord.status != "deleted"
@@ -214,7 +221,13 @@ class ContractRepository:
     def get_high_risk_contracts(self, risk_threshold: int = 70, user_id: str = None) -> List[ContractRecord]:
         """Get contracts with high risk scores"""
         try:
-            query = self.session.query(ContractRecord).join(ContractVersion).join(AnalysisRecord).filter(
+            query = self.session.query(ContractRecord).join(
+                ContractVersion, 
+                ContractRecord.id == ContractVersion.contract_id
+            ).join(
+                AnalysisRecord, 
+                ContractVersion.id == AnalysisRecord.version_id
+            ).filter(
                 AnalysisRecord.overall_risk_score >= risk_threshold,
                 ContractRecord.status != "deleted"
             )

@@ -3,10 +3,10 @@ Contract Layer - Task Definitions
 Defines and creates tasks for different types of contract analysis
 """
 
-from typing import List, Optional
+from typing import List
 from crewai import Task
-from .agents import get_agent_by_type, get_primary_analysis_agents, coordinator_agent
-from .models import AnalysisType, ClauseRisk, ContractMetadata
+from .agents import get_agent_by_type, coordinator_agent
+from .models import AnalysisType, ContractAnalysis, ContractMetadata, ClauseAnalysisResult
 from tools.logger import logger
 
 def create_legal_analysis_task(text_content: str) -> Task:
@@ -47,7 +47,7 @@ def create_legal_analysis_task(text_content: str) -> Task:
         """,
         agent=legal_agent,
         expected_output="Detailed legal risk analysis with identified clauses, risk scores, and recommendations",
-        output_pydantic=List[ClauseRisk]
+        output_pydantic=ClauseAnalysisResult
     )
 
 def create_financial_analysis_task(text_content: str) -> Task:
@@ -88,7 +88,7 @@ def create_financial_analysis_task(text_content: str) -> Task:
         """,
         agent=financial_agent,
         expected_output="Detailed financial risk analysis with identified clauses, risk scores, and recommendations",
-        output_pydantic=List[ClauseRisk]
+        output_pydantic=ClauseAnalysisResult
     )
 
 def create_operations_analysis_task(text_content: str) -> Task:
@@ -129,7 +129,7 @@ def create_operations_analysis_task(text_content: str) -> Task:
         """,
         agent=operations_agent,
         expected_output="Detailed operational risk analysis with identified clauses, risk scores, and recommendations",
-        output_pydantic=List[ClauseRisk]
+        output_pydantic=ClauseAnalysisResult
     )
 
 def create_compliance_analysis_task(text_content: str) -> Task:
@@ -170,7 +170,7 @@ def create_compliance_analysis_task(text_content: str) -> Task:
         """,
         agent=compliance_agent,
         expected_output="Detailed compliance risk analysis with identified clauses, risk scores, and recommendations",
-        output_pydantic=List[ClauseRisk]
+        output_pydantic=ClauseAnalysisResult
     )
 
 def create_metadata_extraction_task(text_content: str) -> Task:
@@ -251,7 +251,8 @@ def create_coordination_task(text_content: str, analysis_results: dict) -> Task:
         - Processing statistics
         """,
         agent=coordinator_agent,
-        expected_output="Comprehensive contract analysis with all risks, overall assessment, and recommendations"
+        expected_output="Comprehensive contract analysis with all risks, overall assessment, and recommendations",
+        output_pydantic=ContractAnalysis
     )
 
 def create_analysis_tasks(text_content: str, analysis_types: List[AnalysisType]) -> List[Task]:

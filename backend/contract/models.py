@@ -35,13 +35,18 @@ class AnalysisType(str, Enum):
 
 class ClauseRisk(BaseModel):
     """Individual clause risk assessment"""
-    clause_type: str = Field(description="Type of clause (e.g., 'Liability', 'Payment')")
-    content_summary: str = Field(description="Brief summary of clause content")
-    risk_score: int = Field(ge=0, le=100, description="Risk score from 0-100")
-    risk_level: RiskLevel = Field(description="Risk level classification")
-    recommendations: List[str] = Field(default_factory=list, description="Recommendations for this clause")
+    clause_type: str = Field(description="e.g., Liability, Payment, SLA, IP")
+    content: str = Field(description="The extracted text of the clause")
+    risk_category: str = Field(description="e.g., Legal, Financial, Operational")
+    risk_score: int = Field(description="Score from 0-100")
+    risk_tag: str = Field(description="e.g., High, Medium, Low")
+    recommendation: Optional[str] = Field(description="AI-generated fix")
     location: Optional[str] = Field(default=None, description="Section/page location in contract")
     severity: Optional[str] = Field(default=None, description="Additional severity information")
+
+class ClauseAnalysisResult(BaseModel):
+    clauses: List[ClauseRisk] = Field(description="List of analyzed clauses with risk scores")
+    overall_risk_score: int = Field(description="Overall contract risk score (0-100)")
 
 class ContractMetadata(BaseModel):
     """Contract metadata extracted from analysis"""
@@ -113,6 +118,7 @@ class AnalysisSession(BaseModel):
     session_id: str = Field(description="Unique session identifier")
     user_id: Optional[str] = Field(default=None, description="User identifier")
     created_at: datetime = Field(default_factory=datetime.now)
+    last_activity: datetime = Field(default_factory=datetime.now)
     analyses_completed: int = Field(default=0)
     total_processing_time_ms: int = Field(default=0)
     contract_types_analyzed: List[ContractType] = Field(default_factory=list)

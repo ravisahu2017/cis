@@ -5,7 +5,6 @@ Defines database models for contract storage and versioning
 
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 from datetime import datetime
 from typing import Optional, Dict, Any
 import json
@@ -25,15 +24,18 @@ class ContractRecord(Base):
     user_id = Column(String, nullable=False)
     original_upload_date = Column(DateTime, default=datetime.utcnow)
     last_modified_date = Column(DateTime, default=datetime.utcnow)
-    current_version_id = Column(String, ForeignKey("contract_versions.id"))
+    current_version_id = Column(String, ForeignKey("contract_versions.id"), nullable=True)
     status = Column(String, default="active")  # active, archived, deleted
     metadata_json = Column(Text)  # Additional metadata as JSON
     
-    # Relationships
-    versions = relationship("ContractVersion", back_populates="contract", foreign_keys="ContractVersion.contract_id")
-    current_version = relationship("ContractVersion", foreign_keys=[current_version_id])
-    queue_items = relationship("AnalysisQueue", back_populates="contract")
-    
+    # Access current version manually:
+    def current_version(self):
+        if self.current_version_id:
+            return self.session.query(ContractVersion).filter(
+                ContractVersion.id == self.current_version_id
+            ).first()
+        return None
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -78,11 +80,6 @@ class ContractVersion(Base):
     # Version tracking
     similarity_score = Column(Float)  # Similarity with previous version
     is_current = Column(Boolean, default=True)
-    
-    # Relationships
-    contract = relationship("ContractRecord", back_populates="versions", foreign_keys=[contract_id])
-    analyses = relationship("AnalysisRecord", back_populates="version")
-    queue_items = relationship("AnalysisQueue", back_populates="version")
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -137,9 +134,6 @@ class AnalysisRecord(Base):
     comparison_with_previous = Column(Text)  # Comparison with previous version
     changes_detected = Column(Text)  # JSON array of detected changes
     
-    # Relationships
-    version = relationship("ContractVersion", back_populates="analyses")
-    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -176,10 +170,6 @@ class AnalysisQueue(Base):
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
-    
-    # Relationships
-    contract = relationship("ContractRecord", back_populates="queue_items")
-    version = relationship("ContractVersion", back_populates="queue_items")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""

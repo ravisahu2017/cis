@@ -13,3 +13,4 @@ botocore
 python-docx
 pytesseract
 tesseract
+sqlalchemy

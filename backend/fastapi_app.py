@@ -17,6 +17,15 @@ def main():
     
     logger.info("Starting CIS FastAPI Application...")
     
+    # Initialize database
+    try:
+        from storage.database import init_database
+        db = init_database()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {str(e)}")
+        # Continue without database for now
+    
     # Create FastAPI app
     app = create_app()
     

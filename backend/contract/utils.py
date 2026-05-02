@@ -8,6 +8,11 @@ import uuid
 from typing import List, Dict, Optional, Tuple, Any
 from datetime import datetime, timedelta
 from .models import ClauseRisk, RiskLevel, ContractType, AnalysisType
+from utils.contract_utils import (
+    extract_parties, extract_dates, extract_monetary_amounts,
+    infer_contract_type, generate_file_hash, calculate_similarity,
+    detect_changes, generate_contract_name, validate_contract_content
+)
 
 class ContractUtils:
     """Utility functions for contract analysis"""
@@ -88,79 +93,8 @@ class ContractUtils:
         ]
     }
     
-    @staticmethod
-    def extract_dates(text: str) -> List[Dict[str, Any]]:
-        """Extract dates from contract text"""
-        date_patterns = [
-            r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',  # MM/DD/YYYY or MM-DD-YYYY
-            r'\b\d{4}[/-]\d{1,2}[/-]\d{1,2}\b',      # YYYY/MM/DD or YYYY-MM-DD
-            r'\b\w+\s+\d{1,2},?\s+\d{4}\b',         # January 1, 2024
-            r'\b\d{1,2}\s+\w+\s+\d{4}\b',            # 1 January 2024
-        ]
-        
-        dates = []
-        for pattern in date_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                dates.append({
-                    'text': match.group(),
-                    'position': match.start(),
-                    'pattern': pattern
-                })
-        
-        return dates
-    
-    @staticmethod
-    def extract_parties(text: str) -> List[str]:
-        """Extract party names from contract text"""
-        party_patterns = [
-            r'between\s+([^,\n]+(?:\s+Inc\.?|\s+LLC\.?|\s+Ltd\.?|\s+Corp\.?|\s+Corporation)?)',
-            r'by\s+and\s+between\s+([^,\n]+(?:\s+Inc\.?|\s+LLC\.?|\s+Ltd\.?|\s+Corp\.?)?)',
-            r'party.*?([^,\n]+(?:\s+Inc\.?|\s+LLC\.?|\s+Ltd\.?|\s+Corp\.?)?)',
-            r'agreement.*?([^,\n]+(?:\s+Inc\.?|\s+LLC\.?|\s+Ltd\.?|\s+Corp\.?)?)',
-        ]
-        
-        parties = []
-        for pattern in party_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                party = match.group(1).strip()
-                if len(party) > 3 and party.lower() not in [p.lower() for p in parties]:
-                    parties.append(party)
-        
-        # Limit to reasonable number of parties
-        return parties[:10]
-    
-    @staticmethod
-    def extract_monetary_amounts(text: str) -> List[Dict[str, Any]]:
-        """Extract monetary amounts from contract text"""
-        money_patterns = [
-            r'\$\s*[\d,]+(?:\.\d{2})?',  # $1,234.56
-            r'[\d,]+(?:\.\d{2})?\s*USD',  # 1,234.56 USD
-            r'[\d,]+(?:\.\d{2})?\s*dollars?',  # 1,234.56 dollars
-            r'USD\s*[\d,]+(?:\.\d{2})?',  # USD 1,234.56
-        ]
-        
-        amounts = []
-        for pattern in money_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                # Extract numeric value
-                numeric_match = re.search(r'[\d,]+(?:\.\d{2})?', match.group())
-                if numeric_match:
-                    amount_str = numeric_match.group().replace(',', '')
-                    try:
-                        amount = float(amount_str)
-                        amounts.append({
-                            'text': match.group(),
-                            'amount': amount,
-                            'position': match.start(),
-                            'currency': 'USD'
-                        })
-                    except ValueError:
-                        continue
-        
-        return amounts
+    # Note: extract_dates, extract_parties, and extract_monetary_amounts 
+# are now imported from utils.contract_utils to avoid duplication
     
     @staticmethod
     def identify_clause_type(text: str) -> Optional[str]:

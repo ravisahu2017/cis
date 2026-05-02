@@ -15,6 +15,8 @@ from .crew import contract_crew_manager
 from .agents import get_agent_capabilities
 from tools.logger import logger
 from tools.file_util import read_pdf, read_docx, read_txt, read_image
+from storage.repository import ContractRepository, AnalysisRepository
+from storage.database import get_database
 
 class ContractService:
     """Main contract service orchestrating all contract analysis functionality"""
@@ -24,6 +26,11 @@ class ContractService:
         self.session_timeout_hours = 24
         self.analysis_queue: List[Dict] = []
         self.max_concurrent_analyses = 5
+        
+        # Initialize storage
+        self.db = get_database()
+        self.contract_repo = ContractRepository()
+        self.analysis_repo = AnalysisRepository()
     
     def analyze_contract(self, request: ContractRequest) -> ContractResponse:
         """
@@ -73,6 +80,41 @@ class ContractService:
                 analysis_types, 
                 analysis_id
             )
+            
+            # Save analysis results to database
+            try:
+                # Create or get contract record
+                contract = self._get_or_create_contract(request, text_content)
+                
+                # Create version record
+                version = self.contract_repo.create_version(
+                    contract_id=contract.id,
+                    filename=request.file_path.split('/')[-1] if request.file_path else "text_input",
+                    file_path=request.file_path or "",
+                    file_content=text_content,
+                    effective_date=analysis.metadata.effective_date if analysis.metadata else None,
+                    expiry_date=analysis.metadata.expiration_date if analysis.metadata else None,
+                    governing_law=analysis.metadata.governing_law if analysis.metadata else None,
+                    total_value=analysis.metadata.total_value if analysis.metadata else None,
+                    currency=analysis.metadata.currency if analysis.metadata else None,
+                    metadata_json=analysis.metadata.dict() if analysis.metadata else {}
+                )
+                
+                # Save analysis results
+                for analysis_type in analysis_types:
+                    self.analysis_repo.create_analysis(
+                        version_id=version.id,
+                        analysis_type=analysis_type.value,
+                        analysis_result=analysis,
+                        processing_time_ms=analysis.processing_time_ms,
+                        agents_used=agents_used
+                    )
+                
+                logger.info(f"Saved analysis to database: contract={contract.id}, version={version.id}")
+                
+            except Exception as e:
+                logger.error(f"Failed to save analysis to database: {str(e)}")
+                # Continue with response even if storage fails
             
             # Update session
             session.analyses_completed += 1
@@ -307,6 +349,49 @@ class ContractService:
                 for item in self.analysis_queue
             ]
         }
+    
+    def _get_or_create_contract(self, request: ContractRequest, text_content: str):
+        """Get existing contract or create new one"""
+        try:
+            # Generate file hash for similarity detection
+            import hashlib
+            file_hash = hashlib.sha256(text_content.encode()).hexdigest()
+            
+            # Check for similar existing contracts
+            similar_contracts = self.contract_repo.find_similar_contracts(
+                file_hash=file_hash, 
+                user_id=request.user_id or "default"
+            )
+            
+            if similar_contracts:
+                # Use existing contract (new version)
+                contract = similar_contracts[0]
+                logger.info(f"Found existing contract: {contract.id}")
+                return contract
+            else:
+                # Create new contract
+                from utils.contract_utils import infer_contract_type, extract_parties
+                contract_type = infer_contract_type(text_content) or request.contract_type_hint
+                parties = extract_parties(text_content)
+                
+                contract = self.contract_repo.create_contract(
+                    contract_name=analysis.contract_name if 'analysis' in locals() else f"Contract {len(similar_contracts) + 1}",
+                    user_id=request.user_id or "default",
+                    contract_type=contract_type.value if contract_type else None,
+                    parties=str(parties),
+                    description="Contract uploaded for analysis"
+                )
+                logger.info(f"Created new contract: {contract.id}")
+                return contract
+                
+        except Exception as e:
+            logger.error(f"Error in _get_or_create_contract: {str(e)}")
+            # Fallback: create minimal contract
+            return self.contract_repo.create_contract(
+                contract_name="Unknown Contract",
+                user_id=request.user_id or "default",
+                description="Contract created due to error in processing"
+            )
     
     def _get_or_create_session(self, session_id: Optional[str], user_id: Optional[str]) -> AnalysisSession:
         """Get existing session or create new one"""

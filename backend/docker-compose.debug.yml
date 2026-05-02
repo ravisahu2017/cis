@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: debug
+    ports:
+      - "8001:8001"    # FastAPI port
+      - "5678:5678"    # Debug port (for remote debugging)
+    environment:
+      - DEBUG=true
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app                    # Mount source code
+      - /app/__pycache__         # Clear cache
+    command: python -m debugpy --listen 0.0.0.0:5678 fastapi_app.py
+    stdin_open: true
+    tty: true

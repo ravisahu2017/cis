@@ -29,3 +29,15 @@ restart: ## Restart the application
 
 dev: ## Start in development mode with hot reload
 	docker-compose up --build
+
+debug: ## Start in debug mode with debugger support
+	docker-compose -f docker-compose.yml -f docker-compose.debug.yml up --build
+
+debug-build: ## Build debug image only
+	docker-compose -f docker-compose.yml -f docker-compose.debug.yml build
+
+debug-shell: ## Open shell in debug container
+	docker-compose -f docker-compose.yml -f docker-compose.debug.yml exec backend bash
+
+debug-logs: ## Show debug container logs
+	docker-compose -f docker-compose.yml -f docker-compose.debug.yml logs -f backend

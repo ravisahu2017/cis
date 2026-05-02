@@ -1,0 +1,41 @@
+# Debug Dockerfile for CIS Backend
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install debugpy for debugging
+RUN pip install debugpy
+
+# Copy source code
+COPY . .
+
+# Create debug target
+FROM python:3.11-slim as debug
+
+WORKDIR /app
+
+# Copy from base installation
+COPY --from=0 /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=0 /usr/local/bin /usr/local/bin
+COPY . .
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV DEBUG=true
+
+# Expose debug port
+EXPOSE 5678
+
+# Default command
+CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "--wait-for-client", "fastapi_app.py"]

@@ -12,7 +12,7 @@ def get_chat_llm(temperature: float = 0.7):
     """Get LLM configured for chat conversations"""
     return LLM(
         base_url="https://openrouter.ai/api/v1",
-        model="openrouter/meta-llama/llama-3.1-8b-instruct",
+        model="openrouter/nvidia/nemotron-3-super-120b-a12b:free",
         api_key=os.environ.get("OPENAI_API_KEY"),
         temperature=temperature  # Higher temperature for more creative/conversational responses
     )

@@ -16,7 +16,7 @@ from tools.file_util import read_pdf
 def get_llm(temperature: float = 0.1):
     return LLM(
         base_url="https://openrouter.ai/api/v1",
-        model= "openrouter/meta-llama/llama-3.1-8b-instruct",
+        model= "openrouter/meta-llama/llama-3.2-3b-instruct",
         api_key= os.environ.get("OPENAI_API_KEY"),
         temperature=temperature
     )

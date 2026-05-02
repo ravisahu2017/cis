@@ -293,7 +293,13 @@ class AnalysisRepository:
     def get_user_analyses(self, user_id: str, limit: int = 50, offset: int = 0) -> List[AnalysisRecord]:
         """Get analyses for a specific user"""
         try:
-            return self.session.query(AnalysisRecord).join(ContractVersion).join(ContractRecord).filter(
+            return self.session.query(AnalysisRecord).join(
+                ContractVersion, 
+                AnalysisRecord.version_id == ContractVersion.id
+            ).join(
+                ContractRecord, 
+                ContractVersion.contract_id == ContractRecord.id
+            ).filter(
                 ContractRecord.user_id == user_id
             ).order_by(desc(AnalysisRecord.analysis_date)).offset(offset).limit(limit).all()
         except Exception as e:
@@ -317,7 +323,13 @@ class AnalysisRepository:
             db_query = self.session.query(AnalysisRecord)
             
             if user_id:
-                db_query = db_query.join(ContractVersion).join(ContractRecord).filter(
+                db_query = db_query.join(
+                    ContractVersion, 
+                    AnalysisRecord.version_id == ContractVersion.id
+                ).join(
+                    ContractRecord, 
+                    ContractVersion.contract_id == ContractRecord.id
+                ).filter(
                     ContractRecord.user_id == user_id
                 )
             
@@ -353,7 +365,13 @@ class AnalysisRepository:
         """Get recent analyses for a user from last N hours"""
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-            return self.session.query(AnalysisRecord).join(ContractVersion).join(ContractRecord).filter(
+            return self.session.query(AnalysisRecord).join(
+                ContractVersion, 
+                AnalysisRecord.version_id == ContractVersion.id
+            ).join(
+                ContractRecord, 
+                ContractVersion.contract_id == ContractRecord.id
+            ).filter(
                 ContractRecord.user_id == user_id,
                 AnalysisRecord.analysis_date >= cutoff_time
             ).order_by(desc(AnalysisRecord.analysis_date)).limit(limit).all()
@@ -473,7 +491,10 @@ class TestRepository:
     def get_contract_analyses(self, contract_id: str) -> List[AnalysisRecord]:
         """Get all analyses for a contract (all versions)"""
         try:
-            return self.session.query(AnalysisRecord).join(ContractVersion).filter(
+            return self.session.query(AnalysisRecord).join(
+                ContractVersion, 
+                AnalysisRecord.version_id == ContractVersion.id
+            ).filter(
                 ContractVersion.contract_id == contract_id
             ).order_by(desc(AnalysisRecord.analysis_date)).all()
         except Exception as e:

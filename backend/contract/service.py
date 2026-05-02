@@ -81,6 +81,9 @@ class ContractService:
                 analysis_id
             )
             
+            # Extract agents used from analysis types
+            agents_used = [agent_type.value for agent_type in analysis_types]
+            
             # Save analysis results to database
             try:
                 # Create or get contract record

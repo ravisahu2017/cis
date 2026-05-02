@@ -115,6 +115,7 @@ def register_routers(app: FastAPI):
     from api.file_router import file_router
     from api.health_router import health_router
     from api.test_router import test_router
+    from api.db_test_router import db_test_router
     
     # Register routers
     app.include_router(chat_router)
@@ -122,6 +123,7 @@ def register_routers(app: FastAPI):
     app.include_router(file_router)
     app.include_router(health_router)
     app.include_router(test_router)
+    app.include_router(db_test_router)
     
     logger.info("All API routers registered successfully")
 

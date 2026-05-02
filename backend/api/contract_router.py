@@ -472,30 +472,6 @@ async def get_analyses(
         logger.error(f"Get analyses error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get analyses")
 
-@contract_router.get("/analyses/{analysis_id}")
-async def get_analysis(
-    analysis_id: str,
-    db: Session = Depends(get_db_session_dep)
-) -> Dict[str, Any]:
-    """
-    Get specific analysis by ID
-    """
-    try:
-        analysis_repo = AnalysisRepository(db)
-        analysis = analysis_repo.get_analysis(analysis_id)
-        
-        if not analysis:
-            raise HTTPException(status_code=404, detail="Analysis not found")
-        
-        return {
-            "analysis": analysis.to_dict()
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Get analysis error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to get analysis")
-
 @contract_router.get("/contracts/{contract_id}/versions/{version_number}/analyses")
 async def get_version_analyses(
     contract_id: str,
@@ -675,3 +651,27 @@ async def get_recent_analyses(
     except Exception as e:
         logger.error(f"Get recent analyses error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get recent analyses")
+
+@contract_router.get("/analyses/{analysis_id}")
+async def get_analysis(
+    analysis_id: str,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get specific analysis by ID
+    """
+    try:
+        analysis_repo = AnalysisRepository(db)
+        analysis = analysis_repo.get_analysis(analysis_id)
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        return {
+            "analysis": analysis.to_dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get analysis")

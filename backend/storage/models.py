@@ -7,6 +7,7 @@ from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKe
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from typing import Optional, Dict, Any
+from tools.logger import logger
 import json
 import uuid
 
@@ -28,27 +29,40 @@ class ContractRecord(Base):
     status = Column(String, default="active")  # active, archived, deleted
     metadata_json = Column(Text)  # Additional metadata as JSON
     
-    # Access current version manually:
-    def current_version(self):
-        if self.current_version_id:
-            return self.session.query(ContractVersion).filter(
-                ContractVersion.id == self.current_version_id
-            ).first()
-        return None
-
+    def _parse_json_field(self, json_str: str) -> Any:
+        """Safely parse JSON field with error handling"""
+        if not json_str:
+            return []
+        
+        try:
+            return json.loads(json_str)
+        except (json.JSONDecodeError, TypeError):
+            # Try to handle common Python list format
+            if json_str.startswith('[') and json_str.endswith(']'):
+                try:
+                    # Replace Python-style quotes with JSON quotes
+                    cleaned = json_str.replace("'", '"')
+                    return json.loads(cleaned)
+                except json.JSONDecodeError:
+                    pass
+            
+            # Return empty list as fallback
+            logger.warning(f"Failed to parse JSON field: {json_str[:100]}...")
+            return []
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
             "contract_name": self.contract_name,
             "description": self.description,
             "contract_type": self.contract_type,
-            "parties": json.loads(self.parties) if self.parties else [],
+            "parties": self._parse_json_field(self.parties) if self.parties else [],
             "user_id": self.user_id,
             "original_upload_date": self.original_upload_date.isoformat() if self.original_upload_date else None,
             "last_modified_date": self.last_modified_date.isoformat() if self.last_modified_date else None,
             "current_version_id": self.current_version_id,
             "status": self.status,
-            "metadata": json.loads(self.metadata_json) if self.metadata_json else {}
+            "metadata": self._parse_json_field(self.metadata_json) if self.metadata_json else {}
         }
 
 class ContractVersion(Base):

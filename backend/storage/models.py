@@ -9,6 +9,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from typing import Optional, Dict, Any
 import json
+import uuid
 
 Base = declarative_base()
 
@@ -31,6 +32,7 @@ class ContractRecord(Base):
     # Relationships
     versions = relationship("ContractVersion", back_populates="contract", foreign_keys="ContractVersion.contract_id")
     current_version = relationship("ContractVersion", foreign_keys=[current_version_id])
+    queue_items = relationship("AnalysisQueue", back_populates="contract")
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -80,6 +82,7 @@ class ContractVersion(Base):
     # Relationships
     contract = relationship("ContractRecord", back_populates="versions", foreign_keys=[contract_id])
     analyses = relationship("AnalysisRecord", back_populates="version")
+    queue_items = relationship("AnalysisQueue", back_populates="version")
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -160,40 +163,61 @@ class AnalysisRecord(Base):
         }
 
 class AnalysisQueue(Base):
-    """Queue for tracking async analysis jobs"""
-    __tablename__ = "analysis_queue"
+    """Queue for tracking analysis jobs"""
+    __tablename__ = 'analysis_queue'
     
-    id = Column(String, primary_key=True)  # UUID
-    contract_id = Column(String, ForeignKey("contracts.id"), nullable=False)
-    version_id = Column(String, ForeignKey("contract_versions.id"), nullable=False)
-    analysis_types = Column(Text)  # JSON array of analysis types
-    user_id = Column(String, nullable=False)
-    priority = Column(String, default="normal")  # low, normal, high, urgent
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    contract_id = Column(String, ForeignKey('contracts.id'), nullable=False)
+    version_id = Column(String, ForeignKey('contract_versions.id'), nullable=False)
+    analysis_type = Column(String, nullable=False)
+    status = Column(String, nullable=False)  # pending, processing, completed, failed
+    priority = Column(String, nullable=False)  # low, medium, high
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
     
-    # Status tracking
-    status = Column(String, default="pending")  # pending, processing, completed, failed
-    created_date = Column(DateTime, default=datetime.utcnow)
-    started_date = Column(DateTime)
-    completed_date = Column(DateTime)
-    
-    # Error handling
-    error_message = Column(Text)
-    retry_count = Column(Integer, default=0)
-    max_retries = Column(Integer, default=3)
+    # Relationships
+    contract = relationship("ContractRecord", back_populates="queue_items")
+    version = relationship("ContractVersion", back_populates="queue_items")
     
     def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
         return {
-            "id": self.id,
-            "contract_id": self.contract_id,
-            "version_id": self.version_id,
-            "analysis_types": json.loads(self.analysis_types) if self.analysis_types else [],
-            "user_id": self.user_id,
-            "priority": self.priority,
-            "status": self.status,
-            "created_date": self.created_date.isoformat() if self.created_date else None,
-            "started_date": self.started_date.isoformat() if self.started_date else None,
-            "completed_date": self.completed_date.isoformat() if self.completed_date else None,
-            "error_message": self.error_message,
-            "retry_count": self.retry_count,
-            "max_retries": self.max_retries
+            'id': self.id,
+            'contract_id': self.contract_id,
+            'version_id': self.version_id,
+            'analysis_type': self.analysis_type,
+            'status': self.status,
+            'priority': self.priority,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'error_message': self.error_message
+        }
+
+class TestRecord(Base):
+    """Test table for API testing"""
+    __tablename__ = 'test_records'
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    value = Column(Integer, nullable=True)
+    tags = Column(String, nullable=True)  # JSON string
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'value': self.value,
+            'tags': json.loads(self.tags) if self.tags else [],
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

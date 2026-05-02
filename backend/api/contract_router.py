@@ -5,14 +5,20 @@ Provides contract analysis endpoints
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import List, Dict, Any, Optional
-from contract import contract_service
-from contract.models import (
-    ContractRequest, ContractResponse, ContractCapabilities, 
-    ContractAnalytics, AnalysisType, ContractType
-)
-from tools.logger import logger
 import tempfile
 import os
+from contract import contract_service
+from contract.models import (
+    ContractRequest, ContractResponse, ContractAnalysis, ContractCapabilities, 
+    ContractAnalytics, AnalysisSession, AnalysisType, ContractType
+)
+from contract.service import contract_service
+from storage.repository import ContractRepository, AnalysisRepository
+from storage.database import get_db_session
+from tools.logger import logger
+from fastapi import HTTPException, status, Depends
+from typing import List, Optional
+from sqlalchemy.orm import Session
 
 contract_router = APIRouter(
     prefix="/contract",
@@ -254,14 +260,418 @@ async def get_contract_types() -> Dict[str, Any]:
     """
     try:
         return {
-            "contract_types": [
-                {
-                    "value": ct.value,
-                    "description": ct.name.replace("_", " ").title()
-                }
-                for ct in ContractType
-            ]
+            "contract_types": [ct.value for ct in ContractType],
+            "descriptions": {
+                "msa": "Master Service Agreement",
+                "nda": "Non-Disclosure Agreement", 
+                "sow": "Statement of Work",
+                "service_agreement": "Service Agreement",
+                "supplier_contract": "Supplier Contract",
+                "employment_agreement": "Employment Agreement",
+                "lease_agreement": "Lease Agreement",
+                "other": "Other"
+            }
         }
     except Exception as e:
         logger.error(f"Contract types error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get contract types")
+
+# Contract Retrieval Endpoints
+
+def get_db_session_dep():
+    """Dependency to get database session"""
+    return get_db_session()
+
+@contract_router.get("/contracts")
+async def get_contracts(
+    user_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get all contracts with pagination and filtering
+    """
+    try:
+        contract_repo = ContractRepository(db)
+        
+        if user_id:
+            contracts = contract_repo.get_user_contracts(user_id, limit, offset)
+        else:
+            # Get all contracts (admin)
+            contracts = contract_repo.search_contracts("", {}, limit, offset)
+        
+        return {
+            "contracts": [contract.to_dict() for contract in contracts],
+            "total": len(contracts),
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"Get contracts error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get contracts")
+
+@contract_router.get("/contracts/{contract_id}")
+async def get_contract(
+    contract_id: str,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get specific contract by ID with all versions
+    """
+    try:
+        contract_repo = ContractRepository(db)
+        contract = contract_repo.get_contract(contract_id)
+        
+        if not contract:
+            raise HTTPException(status_code=404, detail="Contract not found")
+        
+        # Get all versions
+        versions = contract_repo.get_contract_versions(contract_id)
+        
+        return {
+            "contract": contract.to_dict(),
+            "versions": [version.to_dict() for version in versions]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get contract error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get contract")
+
+@contract_router.get("/contracts/{contract_id}/versions/{version_number}")
+async def get_contract_version(
+    contract_id: str,
+    version_number: int,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get specific version of a contract
+    """
+    try:
+        contract_repo = ContractRepository(db)
+        versions = contract_repo.get_contract_versions(contract_id)
+        
+        # Find specific version
+        target_version = None
+        for version in versions:
+            if version.version_number == version_number:
+                target_version = version
+                break
+        
+        if not target_version:
+            raise HTTPException(status_code=404, detail="Contract version not found")
+        
+        # Get analyses for this version
+        analysis_repo = AnalysisRepository(db)
+        analyses = analysis_repo.get_version_analyses(target_version.id)
+        
+        return {
+            "contract_id": contract_id,
+            "version": target_version.to_dict(),
+            "analyses": [analysis.to_dict() for analysis in analyses]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get contract version error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get contract version")
+
+@contract_router.get("/contracts/search")
+async def search_contracts(
+    query: str = "",
+    contract_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Search contracts with filters
+    """
+    try:
+        contract_repo = ContractRepository(db)
+        
+        filters = {}
+        if contract_type:
+            filters["contract_type"] = contract_type
+        
+        contracts = contract_repo.search_contracts(user_id, query, filters, limit, offset)
+        
+        return {
+            "contracts": [contract.to_dict() for contract in contracts],
+            "query": query,
+            "filters": filters,
+            "total": len(contracts),
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"Search contracts error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to search contracts")
+
+@contract_router.get("/contracts/{contract_id}/current-version")
+async def get_current_version(
+    contract_id: str,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get current version of a contract
+    """
+    try:
+        contract_repo = ContractRepository(db)
+        current_version = contract_repo.get_current_version(contract_id)
+        
+        if not current_version:
+            raise HTTPException(status_code=404, detail="Contract has no current version")
+        
+        # Get analyses for current version
+        analysis_repo = AnalysisRepository(db)
+        analyses = analysis_repo.get_version_analyses(current_version.id)
+        
+        return {
+            "contract_id": contract_id,
+            "current_version": current_version.to_dict(),
+            "analyses": [analysis.to_dict() for analysis in analyses]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get current version error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get current version")
+
+# Analysis Retrieval Endpoints
+
+@contract_router.get("/analyses")
+async def get_analyses(
+    user_id: Optional[str] = None,
+    analysis_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get all analyses with pagination and filtering
+    """
+    try:
+        analysis_repo = AnalysisRepository(db)
+        
+        if user_id:
+            analyses = analysis_repo.get_user_analyses(user_id, limit, offset)
+        else:
+            # Get all analyses (admin)
+            analyses = analysis_repo.search_analyses("", {}, limit, offset)
+        
+        return {
+            "analyses": [analysis.to_dict() for analysis in analyses],
+            "total": len(analyses),
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"Get analyses error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get analyses")
+
+@contract_router.get("/analyses/{analysis_id}")
+async def get_analysis(
+    analysis_id: str,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get specific analysis by ID
+    """
+    try:
+        analysis_repo = AnalysisRepository(db)
+        analysis = analysis_repo.get_analysis(analysis_id)
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        return {
+            "analysis": analysis.to_dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get analysis")
+
+@contract_router.get("/contracts/{contract_id}/versions/{version_number}/analyses")
+async def get_version_analyses(
+    contract_id: str,
+    version_number: int,
+    analysis_type: Optional[str] = None,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get all analyses for a specific contract version
+    """
+    try:
+        contract_repo = ContractRepository(db)
+        versions = contract_repo.get_contract_versions(contract_id)
+        
+        # Find specific version
+        target_version = None
+        for version in versions:
+            if version.version_number == version_number:
+                target_version = version
+                break
+        
+        if not target_version:
+            raise HTTPException(status_code=404, detail="Contract version not found")
+        
+        # Get analyses for this version
+        analysis_repo = AnalysisRepository(db)
+        analyses = analysis_repo.get_version_analyses(target_version.id)
+        
+        # Filter by analysis type if specified
+        if analysis_type:
+            analyses = [a for a in analyses if a.analysis_type == analysis_type]
+        
+        return {
+            "contract_id": contract_id,
+            "version_number": version_number,
+            "version_id": target_version.id,
+            "analyses": [analysis.to_dict() for analysis in analyses],
+            "analysis_type_filter": analysis_type
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get version analyses error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get version analyses")
+
+@contract_router.get("/contracts/{contract_id}/analyses")
+async def get_contract_analyses(
+    contract_id: str,
+    analysis_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get all analyses for a contract (all versions)
+    """
+    try:
+        contract_repo = ContractRepository(db)
+        versions = contract_repo.get_contract_versions(contract_id)
+        
+        if not versions:
+            raise HTTPException(status_code=404, detail="Contract not found")
+        
+        # Get analyses for all versions
+        analysis_repo = AnalysisRepository(db)
+        all_analyses = []
+        
+        for version in versions:
+            version_analyses = analysis_repo.get_version_analyses(version.id)
+            for analysis in version_analyses:
+                analysis_data = analysis.to_dict()
+                analysis_data["version_number"] = version.version_number
+                analysis_data["version_id"] = version.id
+                all_analyses.append(analysis_data)
+        
+        # Filter by analysis type if specified
+        if analysis_type:
+            all_analyses = [a for a in all_analyses if a["analysis_type"] == analysis_type]
+        
+        # Apply pagination
+        total = len(all_analyses)
+        paginated_analyses = all_analyses[offset:offset + limit]
+        
+        return {
+            "contract_id": contract_id,
+            "analyses": paginated_analyses,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "analysis_type_filter": analysis_type
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get contract analyses error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get contract analyses")
+
+@contract_router.get("/analyses/search")
+async def search_analyses(
+    query: str = "",
+    analysis_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    risk_level: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Search analyses with filters
+    """
+    try:
+        analysis_repo = AnalysisRepository(db)
+        
+        filters = {}
+        if analysis_type:
+            filters["analysis_type"] = analysis_type
+        if risk_level:
+            filters["risk_level"] = risk_level
+        
+        analyses = analysis_repo.search_analyses(user_id, query, filters, limit, offset)
+        
+        return {
+            "analyses": [analysis.to_dict() for analysis in analyses],
+            "query": query,
+            "filters": filters,
+            "total": len(analyses),
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"Search analyses error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to search analyses")
+
+@contract_router.get("/analyses/types")
+async def get_analysis_types() -> Dict[str, Any]:
+    """
+    Get available analysis types
+    """
+    try:
+        return {
+            "analysis_types": [at.value for at in AnalysisType],
+            "descriptions": {
+                "legal": "Legal risk analysis and compliance check",
+                "financial": "Financial risk and cost analysis",
+                "operations": "Operational risk and feasibility analysis",
+                "comprehensive": "Complete analysis including all risk categories"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Get analysis types error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get analysis types")
+
+@contract_router.get("/analyses/recent")
+async def get_recent_analyses(
+    user_id: Optional[str] = None,
+    hours: int = 24,
+    limit: int = 20,
+    db: Session = Depends(get_db_session_dep)
+) -> Dict[str, Any]:
+    """
+    Get recent analyses from last N hours
+    """
+    try:
+        analysis_repo = AnalysisRepository(db)
+        
+        if user_id:
+            analyses = analysis_repo.get_user_recent_analyses(user_id, hours, limit)
+        else:
+            analyses = analysis_repo.get_recent_analyses(hours, limit)
+        
+        return {
+            "analyses": [analysis.to_dict() for analysis in analyses],
+            "timeframe_hours": hours,
+            "total": len(analyses),
+            "limit": limit
+        }
+    except Exception as e:
+        logger.error(f"Get recent analyses error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get recent analyses")

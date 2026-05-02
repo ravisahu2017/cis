@@ -110,19 +110,34 @@ def register_routers(app: FastAPI):
     """Register all API routers"""
     
     # Import routers
-    from api import chat_router, contract_router, file_router, health_router
+    from api.chat_router import chat_router
+    from api.contract_router import contract_router
+    from api.file_router import file_router
+    from api.health_router import health_router
+    from api.test_router import test_router
     
     # Register routers
     app.include_router(chat_router)
     app.include_router(contract_router)
     app.include_router(file_router)
     app.include_router(health_router)
+    app.include_router(test_router)
     
     logger.info("All API routers registered successfully")
 
 def setup_middleware(app: FastAPI):
-    """Setup additional middleware"""
+    """Setup middleware for the application"""
     
+    # CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    # Logging middleware
     @app.middleware("http")
     async def log_requests(request, call_next):
         """Log all requests"""
@@ -131,6 +146,16 @@ def setup_middleware(app: FastAPI):
         logger.info(f"Response: {response.status_code}")
         return response
     
+    # Concurrency middleware
+    @app.middleware("http")
+    async def add_concurrency_headers(request, call_next):
+        """Add headers to handle concurrent requests"""
+        response = await call_next(request)
+        response.headers["X-Content-Type"] = "application/json"
+        response.headers["Keep-Alive"] = "timeout=5, max=100"
+        return response
+    
+    # Security headers middleware
     @app.middleware("http")
     async def add_security_headers(request, call_next):
         """Add security headers"""

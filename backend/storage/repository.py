@@ -5,13 +5,14 @@ Provides data access methods for contract storage
 
 import uuid
 import hashlib
+import json
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, asc, func
 from tools.logger import logger
-from .models import ContractRecord, ContractVersion, AnalysisRecord, AnalysisQueue
-from .database import get_db_session
+from .models import ContractRecord, ContractVersion, AnalysisRecord, AnalysisQueue, TestRecord
+from .database import get_db_session, get_database
 
 class ContractRepository:
     """Repository for contract and version operations"""
@@ -276,6 +277,16 @@ class AnalysisRepository:
             logger.error(f"Failed to get analysis {analysis_id}: {str(e)}")
             return None
     
+    def get_user_analyses(self, user_id: str, limit: int = 50, offset: int = 0) -> List[AnalysisRecord]:
+        """Get analyses for a specific user"""
+        try:
+            return self.session.query(AnalysisRecord).join(ContractVersion).join(ContractRecord).filter(
+                ContractRecord.user_id == user_id
+            ).order_by(desc(AnalysisRecord.analysis_date)).offset(offset).limit(limit).all()
+        except Exception as e:
+            logger.error(f"Failed to get user analyses: {str(e)}")
+            return []
+    
     def get_version_analyses(self, version_id: str) -> List[AnalysisRecord]:
         """Get all analyses for a version"""
         try:
@@ -285,6 +296,166 @@ class AnalysisRepository:
         except Exception as e:
             logger.error(f"Failed to get version analyses: {str(e)}")
             return []
+    
+    def search_analyses(self, user_id: str = None, query: str = "", filters: Dict = None, 
+                       limit: int = 50, offset: int = 0) -> List[AnalysisRecord]:
+        """Search analyses with filters"""
+        try:
+            db_query = self.session.query(AnalysisRecord)
+            
+            if user_id:
+                db_query = db_query.join(ContractVersion).join(ContractRecord).filter(
+                    ContractRecord.user_id == user_id
+                )
+            
+            if query:
+                db_query = db_query.filter(
+                    AnalysisRecord.executive_summary.contains(query) |
+                    AnalysisRecord.analysis_json.contains(query)
+                )
+            
+            if filters:
+                if "analysis_type" in filters:
+                    db_query = db_query.filter(AnalysisRecord.analysis_type == filters["analysis_type"])
+                if "risk_level" in filters:
+                    db_query = db_query.filter(AnalysisRecord.risk_level == filters["risk_level"])
+            
+            return db_query.order_by(desc(AnalysisRecord.analysis_date)).offset(offset).limit(limit).all()
+        except Exception as e:
+            logger.error(f"Failed to search analyses: {str(e)}")
+            return []
+    
+    def get_recent_analyses(self, hours: int = 24, limit: int = 20) -> List[AnalysisRecord]:
+        """Get recent analyses from last N hours"""
+        try:
+            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+            return self.session.query(AnalysisRecord).filter(
+                AnalysisRecord.analysis_date >= cutoff_time
+            ).order_by(desc(AnalysisRecord.analysis_date)).limit(limit).all()
+        except Exception as e:
+            logger.error(f"Failed to get recent analyses: {str(e)}")
+            return []
+    
+    def get_user_recent_analyses(self, user_id: str, hours: int = 24, limit: int = 20) -> List[AnalysisRecord]:
+        """Get recent analyses for a user from last N hours"""
+        try:
+            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+            return self.session.query(AnalysisRecord).join(ContractVersion).join(ContractRecord).filter(
+                ContractRecord.user_id == user_id,
+                AnalysisRecord.analysis_date >= cutoff_time
+            ).order_by(desc(AnalysisRecord.analysis_date)).limit(limit).all()
+        except Exception as e:
+            logger.error(f"Failed to get user recent analyses: {str(e)}")
+            return []
+
+def get_db_session():
+    """Get a database session"""
+    db = get_database()
+    return db.get_session()
+
+class TestRepository:
+    """Repository for test records operations"""
+    
+    def __init__(self, session: Session = None):
+        self.session = session or get_db_session()
+    
+    def create_test_record(self, name: str, description: str = None, value: int = None, 
+                          tags: List[str] = None, is_active: bool = True) -> TestRecord:
+        """Create a new test record"""
+        test_record = TestRecord(
+            name=name,
+            description=description,
+            value=value,
+            tags=json.dumps(tags) if tags else json.dumps([]),
+            is_active=is_active
+        )
+        
+        self.session.add(test_record)
+        self.session.commit()
+        
+        logger.info(f"Created test record: {test_record.id}")
+        return test_record
+    
+    def get_test_record(self, record_id: str) -> Optional[TestRecord]:
+        """Get test record by ID"""
+        return self.session.query(TestRecord).filter(TestRecord.id == record_id).first()
+    
+    def get_all_test_records(self, limit: int = 50, offset: int = 0, 
+                          is_active: bool = None) -> List[TestRecord]:
+        """Get all test records with pagination"""
+        query = self.session.query(TestRecord)
+        
+        if is_active is not None:
+            query = query.filter(TestRecord.is_active == is_active)
+        
+        return query.offset(offset).limit(limit).all()
+    
+    def update_test_record(self, record_id: str, name: str = None, 
+                          description: str = None, value: int = None,
+                          tags: List[str] = None, is_active: bool = None) -> Optional[TestRecord]:
+        """Update test record"""
+        test_record = self.get_test_record(record_id)
+        if not test_record:
+            return None
+        
+        if name is not None:
+            test_record.name = name
+        if description is not None:
+            test_record.description = description
+        if value is not None:
+            test_record.value = value
+        if tags is not None:
+            test_record.tags = json.dumps(tags)
+        if is_active is not None:
+            test_record.is_active = is_active
+        
+        test_record.updated_at = datetime.utcnow()
+        self.session.commit()
+        
+        logger.info(f"Updated test record: {record_id}")
+        return test_record
+    
+    def delete_test_record(self, record_id: str) -> bool:
+        """Delete test record"""
+        test_record = self.get_test_record(record_id)
+        if not test_record:
+            return False
+        
+        self.session.delete(test_record)
+        self.session.commit()
+        
+        logger.info(f"Deleted test record: {record_id}")
+        return True
+    
+    def search_test_records(self, query: str = "", tags: List[str] = None,
+                           limit: int = 50, offset: int = 0) -> List[TestRecord]:
+        """Search test records"""
+        db_query = self.session.query(TestRecord)
+        
+        if query:
+            db_query = db_query.filter(
+                TestRecord.name.contains(query) | 
+                TestRecord.description.contains(query)
+            )
+        
+        if tags:
+            for tag in tags:
+                db_query = db_query.filter(TestRecord.tags.contains(tag))
+        
+        return db_query.offset(offset).limit(limit).all()
+    
+    def get_test_records_by_value_range(self, min_value: int = None, max_value: int = None,
+                                     limit: int = 50, offset: int = 0) -> List[TestRecord]:
+        """Get test records by value range"""
+        query = self.session.query(TestRecord)
+        
+        if min_value is not None:
+            query = query.filter(TestRecord.value >= min_value)
+        
+        if max_value is not None:
+            query = query.filter(TestRecord.value <= max_value)
+        
+        return query.offset(offset).limit(limit).all()
     
     def get_contract_analyses(self, contract_id: str) -> List[AnalysisRecord]:
         """Get all analyses for a contract (all versions)"""

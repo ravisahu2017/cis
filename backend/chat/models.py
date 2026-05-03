@@ -4,8 +4,9 @@ Defines data structures for chat functionality
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from datetime import datetime
+from utils import HttpBaseResponse
 
 class ChatMessage(BaseModel):
     """Individual chat message"""
@@ -21,14 +22,12 @@ class ChatRequest(BaseModel):
     context: Optional[List[ChatMessage]] = Field(default=None, description="Previous chat history")
     user_id: Optional[str] = Field(default=None, description="User identifier")
 
-class ChatResponse(BaseModel):
+class ChatResponse(HttpBaseResponse):
     """Chat response to user"""
     response: str = Field(description="AI response to user message")
     session_id: str = Field(description="Chat session identifier")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Response timestamp")
     agent_used: str = Field(description="Which agent handled the request")
     intent: str = Field(description="Classified intent (general/contract)")
-    response_time_ms: Optional[int] = Field(default=None, description="Response time in milliseconds")
 
 class ChatSession(BaseModel):
     """Chat session information"""

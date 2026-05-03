@@ -4,9 +4,10 @@ Defines data structures for contract analysis functionality
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from datetime import datetime
 from enum import Enum
+from utils import HttpBaseResponse
 
 class ContractType(str, Enum):
     """Supported contract types"""
@@ -86,12 +87,8 @@ class ContractRequest(BaseModel):
 
 class ContractResponse(BaseModel):
     """Contract analysis response"""
-    success: bool = Field(description="Whether analysis was successful")
     analysis: Optional[ContractAnalysis] = Field(default=None, description="Analysis results if successful")
-    error_message: Optional[str] = Field(default=None, description="Error message if failed")
-    processing_time_ms: int = Field(description="Total processing time in milliseconds")
     analysis_id: str = Field(description="Unique identifier for this analysis")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Response timestamp")
     agents_used: List[str] = Field(description="List of agents used in analysis")
 
 class ContractCapabilities(BaseModel):

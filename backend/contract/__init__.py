@@ -7,7 +7,7 @@ from .service import contract_service
 from .models import ContractRequest, ContractResponse, ContractMetadata
 from .agents import get_agent_by_type, get_all_contract_agents
 from .crew import contract_crew_manager
-from .utils import ContractUtils
+from .contract_utils import ContractUtils
 
 __all__ = [
     'contract_service',

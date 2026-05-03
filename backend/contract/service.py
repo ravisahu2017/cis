@@ -11,10 +11,11 @@ from .models import (
     ContractRequest, ContractResponse, ContractAnalysis, ContractCapabilities, 
     ContractAnalytics, AnalysisSession, AnalysisType, ContractType
 )
-from .utils import ContractUtils
+from .contract_utils import ContractUtils
+
 from .crew import contract_crew_manager
 from .agents import get_agent_capabilities
-from utils import logger, read_pdf, read_docx, read_txt, read_image
+from utils import logger, read_pdf, read_docx, read_txt, read_image, HttpBaseResponse
 from storage.repository import ContractRepository, AnalysisRepository
 from storage.database import get_database
 
@@ -139,14 +140,17 @@ class ContractService:
             agents_used = self._get_agents_used(analysis_types)
             
             # Create response
-            response = ContractResponse(
+            response = HttpBaseResponse(
                 success=True,
-                analysis=analysis,
-                processing_time_ms=total_processing_time_ms,
-                analysis_id=analysis_id,
-                agents_used=agents_used
+                message="Contract analysis completed successfully",
+                data=ContractResponse(
+                    analysis=analysis,
+                    analysis_id=analysis_id,
+                    agents_used=agents_used
+                ),
+                response_time_ms=total_processing_time_ms,
             )
-            
+
             logger.info(f"Contract analysis {analysis_id} completed successfully")
             return response
             
@@ -159,12 +163,16 @@ class ContractService:
             # Calculate processing time even for errors
             total_processing_time_ms = int((time.time() - start_time) * 1000)
             
-            return ContractResponse(
+            return HttpBaseResponse(
                 success=False,
-                error_message=str(e),
-                processing_time_ms=total_processing_time_ms,
-                analysis_id=analysis_id,
-                agents_used=[]
+                message="Contract analysis failed",
+                error=str(e),
+                data=ContractResponse(
+                    success=False,
+                    analysis_id=analysis_id,
+                    agents_used=[]
+                ),
+                response_time_ms=total_processing_time_ms,
             )
     
     def _extract_text_content(self, request: ContractRequest) -> str:

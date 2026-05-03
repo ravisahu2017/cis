@@ -19,6 +19,7 @@ from utils import logger
 from fastapi import HTTPException, status, Depends
 from typing import List, Optional
 from sqlalchemy.orm import Session
+from utils.common_model import HttpBaseResponse
 
 contract_router = APIRouter(
     prefix="/contract",
@@ -26,7 +27,7 @@ contract_router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-@contract_router.post("/analyze", response_model=ContractResponse)
+@contract_router.post("/analyze", response_model=HttpBaseResponse)
 async def analyze_contract(
     file: Optional[UploadFile] = File(None),
     file_content: Optional[str] = Form(None),
@@ -34,7 +35,7 @@ async def analyze_contract(
     contract_type_hint: Optional[str] = Form(None),
     user_id: Optional[str] = Form(None),
     priority: Optional[str] = Form("normal")
-) -> ContractResponse:
+) -> HttpBaseResponse:
     """
     Analyze a contract using multi-agent AI system
     

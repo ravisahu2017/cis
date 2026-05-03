@@ -261,7 +261,7 @@ class ApiService {
    * DELETE request
    */
   async delete<T = any>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestOptions = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;

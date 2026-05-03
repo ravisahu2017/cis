@@ -45,6 +45,26 @@ interface ContractMetadata {
   total_value: string;
 }
 
+interface Contract {
+  id: string;
+  contract_name: string;
+  contract_type: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  file_path: string;
+  file_size: number;
+  analysis_status: 'pending' | 'processing' | 'completed' | 'failed';
+  analysis_data?: AnalysisData;
+}
+
+interface ContractsResponse {
+  contracts: Contract[];
+  total_count: number;
+  limit: number;
+  offset: number;
+}
+
 interface AnalysisData {
   contract_name: string;
   metadata: ContractMetadata;

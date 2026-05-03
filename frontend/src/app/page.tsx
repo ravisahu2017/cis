@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { backendApi } from '@/utils/api';
+import contractController from '@/controllers/contract'
 import { FileText, TrendingUp, AlertTriangle, Clock, Users, Settings, Send, Bot, User, Upload, X, File, Loader2 } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { DashboardTile, ChatMessage, UploadedFile, AnalysisData } from '@/models/models';
+import { DashboardTile, ChatMessage, UploadedFile, AnalysisData, Contract, ContractsResponse } from '@/models/models';
 import { getDummyDashboardTiles } from '@/models/dummy';
 import { getTilesFromAnalysis , getAnalysisChatMsg } from '@/models/dataFiller';
 
@@ -29,6 +30,8 @@ export default function Home() {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [isChatStreaming, setIsChatStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<string>('');
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [isLoadingContracts, setIsLoadingContracts] = useState(false);
 
   // Generate dynamic dashboard tiles based on analysis results
   const getDashboardTiles = (): DashboardTile[] => {
@@ -44,6 +47,25 @@ export default function Home() {
     if (score >= 40) return 'bg-orange-50 text-orange-600';
     return 'bg-green-50 text-green-600';
   };
+
+  // Fetch contracts from database
+  const fetchContracts = async () => {
+    setIsLoadingContracts(true);
+    contractController.fetch('default').then(items => {
+      if (items) {
+        setContracts(items);
+      }
+    }).catch(error => {
+      console.error('Failed to fetch contracts:', error);
+    }).finally(() => {
+      setIsLoadingContracts(false);
+    });
+  };
+
+  // Load contracts on component mount
+  useEffect(() => {
+    fetchContracts();
+  }, []);
 
   const getRiskLevel = (score: number): string => {
     if (score >= 70) return 'High Risk';
@@ -433,6 +455,105 @@ export default function Home() {
                   </div>
                 </motion.div>
               ))}
+            </div>
+
+            {/* All Contracts Section */}
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-light">All Contracts</h2>
+                <button
+                  onClick={fetchContracts}
+                  disabled={isLoadingContracts}
+                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isLoadingContracts ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Refresh'
+                  )}
+                </button>
+              </div>
+              
+              {isLoadingContracts ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                </div>
+              ) : contracts.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No contracts found in database</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contract Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Score</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {contracts.map((contract) => (
+                          <tr key={contract.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <FileText className="w-4 h-4 text-gray-400 mr-3" />
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{contract.contract_name}</div>
+                                  <div className="text-xs text-gray-500">{(contract.file_size / 1024 / 1024).toFixed(2)} MB</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {contract.contract_type || 'Unknown'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                contract.analysis_status === 'completed' ? 'bg-green-100 text-green-800' :
+                                contract.analysis_status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                                contract.analysis_status === 'failed' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {contract.analysis_status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(contract.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {contract.analysis_data?.overall_risk_score ? (
+                                <div className="flex items-center">
+                                  <span className={`text-sm font-medium ${
+                                    contract.analysis_data.overall_risk_score >= 70 ? 'text-red-600' :
+                                    contract.analysis_data.overall_risk_score >= 40 ? 'text-yellow-600' :
+                                    'text-green-600'
+                                  }`}>
+                                    {contract.analysis_data.overall_risk_score}
+                                  </span>
+                                  <span className="ml-2 text-xs text-gray-500">
+                                    {getRiskLevel(contract.analysis_data.overall_risk_score)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Contract Summary Section */}

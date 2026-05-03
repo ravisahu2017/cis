@@ -2,7 +2,7 @@ import { backendApi } from '@/utils/api';
 import { Contract, RecentAnalysis, PaginatedResponse } from '@/models/models';
 
 export default class ContractController {
-    static async fetch(userId: string = 'default', limit: number = 50, offset: number = 0): Promise<Contract[]> {
+    static async fetch(userId: string = 'default', limit: number = 5, offset: number = 0): Promise<Contract[]> {
         try {
             const params = new URLSearchParams({
                 user_id: userId,
@@ -20,7 +20,7 @@ export default class ContractController {
         }
     }
 
-    static async fetchRecentAnalyses(userId: string = 'default', hours: number = 12, limit: number = 3): Promise<RecentAnalysis[]> {
+    static async fetchRecentAnalyses(userId: string = 'default', hours: number = 12, limit: number = 2): Promise<RecentAnalysis[]> {
         try {
             const params = new URLSearchParams({
                 user_id: userId,

@@ -6,7 +6,7 @@ import { backendApi } from '@/utils/api';
 import contractController from '@/controllers/contract'
 import { FileText, TrendingUp, AlertTriangle, Clock, Users, Settings, Send, Bot, User, Upload, X, File, Loader2 } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { DashboardTile, ChatMessage, UploadedFile, AnalysisData, Contract, ContractsResponse } from '@/models/models';
+import { DashboardTile, ChatMessage, UploadedFile, AnalysisData, Contract, ContractsResponse, RecentAnalysis } from '@/models/models';
 import { getDummyDashboardTiles } from '@/models/dummy';
 import { getTilesFromAnalysis , getAnalysisChatMsg } from '@/models/dataFiller';
 
@@ -32,6 +32,8 @@ export default function Home() {
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<string>('');
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
+  const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
+  const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
 
   // Generate dynamic dashboard tiles based on analysis results
   const getDashboardTiles = (): DashboardTile[] => {
@@ -62,9 +64,24 @@ export default function Home() {
     });
   };
 
-  // Load contracts on component mount
+  // Fetch recent analyses from database
+  const fetchRecentAnalyses = async () => {
+    setIsLoadingAnalyses(true);
+    contractController.fetchRecentAnalyses('default', 12, 3).then(items => {
+      if (items) {
+        setRecentAnalyses(items);
+      }
+    }).catch(error => {
+      console.error('Failed to fetch recent analyses:', error);
+    }).finally(() => {
+      setIsLoadingAnalyses(false);
+    });
+  };
+
+  // Load contracts and analyses on component mount
   useEffect(() => {
     fetchContracts();
+    fetchRecentAnalyses();
   }, []);
 
   const getRiskLevel = (score: number): string => {
@@ -552,6 +569,107 @@ export default function Home() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Recent Analyses Section */}
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-light">Recent Analyses</h2>
+                <button
+                  onClick={fetchRecentAnalyses}
+                  disabled={isLoadingAnalyses}
+                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isLoadingAnalyses ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Refresh'
+                  )}
+                </button>
+              </div>
+              
+              {isLoadingAnalyses ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                </div>
+              ) : recentAnalyses.length === 0 ? (
+                <div className="text-center py-8">
+                  <TrendingUp className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No recent analyses found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentAnalyses.map((analysis) => (
+                    <motion.div
+                      key={analysis.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{analysis.analysis.contract_name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {new Date(analysis.analysis_date).toLocaleDateString()} at {new Date(analysis.analysis_date).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            analysis.risk_level === 'high' ? 'bg-red-100 text-red-800' :
+                            analysis.risk_level === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {analysis.risk_level.charAt(0).toUpperCase() + analysis.risk_level.slice(1)} Risk
+                          </span>
+                          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                            Score: {analysis.overall_risk_score}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <div className="text-2xl font-bold text-gray-900">{analysis.legal_risk_score}</div>
+                          <div className="text-xs text-gray-500">Legal Risk</div>
+                        </div>
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <div className="text-2xl font-bold text-gray-900">{analysis.financial_risk_score}</div>
+                          <div className="text-xs text-gray-500">Financial Risk</div>
+                        </div>
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <div className="text-2xl font-bold text-gray-900">{analysis.operational_risk_score}</div>
+                          <div className="text-xs text-gray-500">Operational Risk</div>
+                        </div>
+                      </div>
+                      
+                      {analysis.executive_summary && (
+                        <div className="mb-4">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">Executive Summary</h4>
+                          <p className="text-sm text-gray-600">{analysis.executive_summary}</p>
+                        </div>
+                      )}
+                      
+                      {analysis.key_recommendations && analysis.key_recommendations.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">Key Recommendations</h4>
+                          <ul className="space-y-1">
+                            {analysis.key_recommendations.map((rec, index) => (
+                              <li key={index} className="text-sm text-gray-600 flex items-start">
+                                <span className="text-blue-500 mr-2">•</span>
+                                {rec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
                 </div>
               )}
             </div>

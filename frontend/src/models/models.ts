@@ -58,11 +58,33 @@ interface Contract {
   analysis_data?: AnalysisData;
 }
 
-interface ContractsResponse {
-  contracts: Contract[];
+interface PaginatedResponse {
+  items: any[];
   total_count: number;
   limit: number;
   offset: number;
+  has_more: boolean;
+}
+
+interface RecentAnalysis {
+  id: string;
+  version_id: string;
+  analysis_type: string;
+  analysis_date: string;
+  overall_risk_score: number;
+  risk_level: string;
+  legal_risk_score: number;
+  financial_risk_score: number;
+  operational_risk_score: number;
+  processing_time_ms: number;
+  agents_used: string[];
+  analysis_status: string;
+  analysis: AnalysisData;
+  clauses: Clause[];
+  executive_summary: string;
+  key_recommendations: string[];
+  comparison_with_previous: any;
+  changes_detected: any[];
 }
 
 interface AnalysisData {

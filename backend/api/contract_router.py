@@ -289,7 +289,7 @@ async def get_contracts(
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db_session_dep)
-) -> HttpBaseResponse:
+) -> HttpBaseResponse   :
     """
     Get all contracts with pagination and filtering
     """

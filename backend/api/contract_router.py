@@ -638,7 +638,7 @@ async def get_recent_analyses(
     hours: int = 24,
     limit: int = 20,
     db: Session = Depends(get_db_session_dep)
-) -> Dict[str, Any]:
+) -> HttpBaseResponse:
     """
     Get recent analyses from last N hours
     """
@@ -650,12 +650,17 @@ async def get_recent_analyses(
         else:
             analyses = analysis_repo.get_recent_analyses(hours, limit)
         
-        return {
-            "analyses": [analysis.to_dict() for analysis in analyses],
-            "timeframe_hours": hours,
-            "total": len(analyses),
-            "limit": limit
-        }
+        return HttpBaseResponse(
+            success=True,
+            message="Recent analyses retrieved successfully",
+            data= PaginationResponse(
+                total=len(analyses),
+                limit=limit,
+                offset=0,
+                has_more=False,
+                items=[analysis.to_dict() for analysis in analyses]
+            )
+        )
     except Exception as e:
         logger.error(f"Get recent analyses error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get recent analyses")

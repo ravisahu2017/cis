@@ -77,12 +77,12 @@ class ContractService:
             
             # Process analysis
             # Use mock data for testing (remove LLM calls)
-            from contract.mock_data import get_mock_analysis
+            # from contract.mock_data import get_mock_analysis
             
-            analysis = get_mock_analysis(text_content, analysis_id, analysis_types)
+            # analysis = get_mock_analysis(text_content, analysis_id, analysis_types)
             
             # Uncomment this line to enable real LLM calls:
-            # analysis = contract_crew_manager.analyze_contract(text_content, analysis_types, analysis_id)
+            analysis = contract_crew_manager.analyze_contract(text_content, analysis_types, analysis_id)
             
             # Extract agents used from analysis types
             agents_used = [agent_type.value for agent_type in analysis_types]

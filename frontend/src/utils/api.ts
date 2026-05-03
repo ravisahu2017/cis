@@ -2,8 +2,11 @@
 
 interface ApiResponse<T = any> {
   success: boolean;
+  message: string;
   data?: T;
   error?: string;
+  timestamp: any;
+  response_time_ms: number;
 }
 
 interface RequestOptions {
@@ -255,142 +258,6 @@ class ApiService {
   }
 
   /**
-   * Streaming request for real-time responses
-   */
-  async streamResponse<T = any>(
-    endpoint: string, 
-    formData: FormData,
-    onProgress?: (data: any) => void,
-    onChunk?: (chunk: string) => void,
-    options: RequestOptions = {}
-  ): Promise<ApiResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
-    
-    try {
-      console.log(`Streaming request to: ${url}`);
-      console.log('FormData contents:', {
-        files: formData.getAll('files').length,
-        ...Object.fromEntries(
-          Array.from(formData.entries())
-            .filter(([key]) => key !== 'files')
-        )
-      });
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), options.timeout || this.defaultTimeout);
-
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
-        mode: 'cors',
-        credentials: 'omit',
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let result: any = null;
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) break;
-          
-          const chunk = decoder.decode(value, { stream: true });
-          buffer += chunk;
-          
-          // Call onChunk callback for each chunk received
-          if (onChunk) {
-            onChunk(chunk);
-          }
-          
-          // Try to parse complete JSON objects from buffer
-          const lines = buffer.split('\n');
-          
-          for (let i = 0; i < lines.length - 1; i++) {
-            const line = lines[i].trim();
-            if (line.startsWith('data: ')) {
-              try {
-                const jsonData = JSON.parse(line.slice(6));
-                result = jsonData;
-                
-                // Call onProgress callback with parsed data
-                if (onProgress) {
-                  onProgress(jsonData);
-                }
-                
-                console.log('Streaming data received:', jsonData);
-              } catch (e) {
-                console.warn('Failed to parse streaming data:', line);
-              }
-            } else if (line.startsWith('event: ')) {
-              // Handle event stream messages
-              try {
-                const eventData = JSON.parse(line.slice(7));
-                if (onProgress) {
-                  onProgress(eventData);
-                }
-                console.log('Event stream data:', eventData);
-              } catch (e) {
-                console.warn('Failed to parse event stream data:', line);
-              }
-            }
-          }
-          
-          // Keep the incomplete line for next iteration
-          buffer = lines[lines.length - 1];
-        }
-      }
-
-      // If no streaming, fall back to regular response
-      if (!result) {
-        const contentType = response.headers.get('content-type');
-        
-        if (contentType?.includes('application/json')) {
-          result = await response.json();
-        } else if (contentType?.includes('image/')) {
-          const imageBuffer = await response.arrayBuffer();
-          const base64Image = Buffer.from(imageBuffer).toString('base64');
-          const mimeType = contentType.split(';')[0];
-          result = { imageUrl: `data:${mimeType};base64,${base64Image}` };
-        } else {
-          const text = await response.text();
-          try {
-            result = JSON.parse(text);
-          } catch {
-            result = { success: false, error: 'Invalid response format', rawResponse: text };
-          }
-        }
-      }
-
-      return {
-        success: true,
-        data: result,
-        ...result,
-      };
-    } catch (error) {
-      console.error('Streaming request failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
-
-  /**
    * DELETE request
    */
   async delete<T = any>(
@@ -443,7 +310,7 @@ class ApiService {
 
 
 // For specific backend servers
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+const backendUrl = 'http://localhost:8001';
 export const backendApi = new ApiService(backendUrl);
 
 

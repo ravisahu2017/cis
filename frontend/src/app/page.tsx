@@ -5,56 +5,10 @@ import { motion } from 'framer-motion';
 import { backendApi } from '@/utils/api';
 import { FileText, TrendingUp, AlertTriangle, Clock, Users, Settings, Send, Bot, User, Upload, X, File, Loader2 } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { DashboardTile, ChatMessage, UploadedFile, AnalysisData } from '@/models/models';
+import { getDummyDashboardTiles } from '@/models/dummy';
+import { getTilesFromAnalysis , getAnalysisChatMsg } from '@/models/dataFiller';
 
-interface DashboardTile {
-  id: string;
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: React.ReactNode;
-  color: string;
-  trend?: string;
-}
-
-interface ChatMessage {
-  id: string;
-  type: 'user' | 'bot';
-  message: string;
-  timestamp: string;
-}
-
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  uploadedAt: string;
-  file: File; // Store actual File object for API upload
-}
-
-interface Clause {
-  clause_type: string;
-  content: string;
-  recommendation: string;
-  risk_score: number;
-  risk_tag: string;
-  risk_category: string;
-}
-
-interface AnalysisData {
-  contract_name: string;
-  execution_date: string;
-  expiry_date: string;
-  clauses: Clause[];
-  contract_type: string;
-  financial_risk_score: number;
-  governing_law: string;
-  legal_risk_score: number;
-  operational_risk_score: number;
-  overall_risk_score: number;
-  parties: string[];
-  summary: string;
-}
 
 export default function Home() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -79,121 +33,10 @@ export default function Home() {
   // Generate dynamic dashboard tiles based on analysis results
   const getDashboardTiles = (): DashboardTile[] => {
     if (analysisResults) {
-      return [
-        {
-          id: '1',
-          title: 'Overall Risk Score',
-          value: analysisResults.overall_risk_score,
-          subtitle: getRiskLevel(analysisResults.overall_risk_score),
-          icon: <AlertTriangle className="w-6 h-6" />,
-          color: getRiskColor(analysisResults.overall_risk_score),
-          trend: 'Calculated'
-        },
-        {
-          id: '2',
-          title: 'Legal Risk Score',
-          value: analysisResults.legal_risk_score,
-          subtitle: getRiskLevel(analysisResults.legal_risk_score),
-          icon: <FileText className="w-6 h-6" />,
-          color: getRiskColor(analysisResults.legal_risk_score),
-          trend: 'Legal assessment'
-        },
-        {
-          id: '3',
-          title: 'Financial Risk Score',
-          value: analysisResults.financial_risk_score,
-          subtitle: getRiskLevel(analysisResults.financial_risk_score),
-          icon: <TrendingUp className="w-6 h-6" />,
-          color: getRiskColor(analysisResults.financial_risk_score),
-          trend: 'Financial exposure'
-        },
-        {
-          id: '4',
-          title: 'Operational Risk Score',
-          value: analysisResults.operational_risk_score,
-          subtitle: getRiskLevel(analysisResults.operational_risk_score),
-          icon: <Settings className="w-6 h-6" />,
-          color: getRiskColor(analysisResults.operational_risk_score),
-          trend: 'Operations impact'
-        },
-        {
-          id: '5',
-          title: 'Contract Type',
-          value: analysisResults.contract_type,
-          subtitle: 'Agreement category',
-          icon: <FileText className="w-6 h-6" />,
-          color: 'bg-blue-50 text-blue-600',
-          trend: analysisResults.governing_law
-        },
-        {
-          id: '6',
-          title: 'Total Clauses',
-          value: analysisResults.clauses?.length || 0,
-          subtitle: 'Identified provisions',
-          icon: <FileText className="w-6 h-6" />,
-          color: 'bg-purple-50 text-purple-600',
-          trend: `${analysisResults.clauses?.filter(c => c.risk_tag === 'High').length || 0} high risk`
-        }
-      ];
+      return getTilesFromAnalysis(analysisResults);
     }
     
-    // Default tiles when no analysis results
-    return [
-      {
-        id: '1',
-        title: 'Active Contracts',
-        value: '24',
-        subtitle: 'Currently under review',
-        icon: <FileText className="w-6 h-6" />,
-        color: 'bg-blue-50 text-blue-600',
-        trend: '+3 this week'
-      },
-      {
-        id: '2',
-        title: 'Risk Score',
-        value: '7.2',
-        subtitle: 'Average risk level',
-        icon: <AlertTriangle className="w-6 h-6" />,
-        color: 'bg-orange-50 text-orange-600',
-        trend: '-0.5 from last month'
-      },
-      {
-        id: '3',
-        title: 'Compliance Rate',
-        value: '94%',
-        subtitle: 'Meets standards',
-        icon: <TrendingUp className="w-6 h-6" />,
-        color: 'bg-green-50 text-green-600',
-        trend: '+2% improvement'
-      },
-      {
-        id: '4',
-        title: 'Pending Reviews',
-        value: '8',
-        subtitle: 'Awaiting approval',
-        icon: <Clock className="w-6 h-6" />,
-        color: 'bg-purple-50 text-purple-600',
-        trend: '2 urgent'
-      },
-      {
-        id: '5',
-        title: 'Team Members',
-        value: '12',
-        subtitle: 'Active users',
-        icon: <Users className="w-6 h-6" />,
-        color: 'bg-indigo-50 text-indigo-600',
-        trend: 'All online'
-      },
-      {
-        id: '6',
-        title: 'System Health',
-        value: '98%',
-        subtitle: 'Operational status',
-        icon: <Settings className="w-6 h-6" />,
-        color: 'bg-emerald-50 text-emerald-600',
-        trend: 'All systems normal'
-      }
-    ];
+    return getDummyDashboardTiles();
   };
 
   const getRiskColor = (score: number): string => {
@@ -383,29 +226,21 @@ export default function Home() {
       
       // Add files to FormData - backend expects 'files' field with actual File objects
       uploadedFiles.forEach((uploadedFile) => {
-        formData.append('files', uploadedFile.file);
+        formData.append('file', uploadedFile.file);
       });
       
-
+      // Add analysis_types key with ["legal"] as value
+      formData.append('analysis_types', ["legal"]);
       
       // Call backend API
-      const response = await backendApi.postFormData('/analyze-contracts', formData);
+      const response = await backendApi.postFormData('/contract/analyze', formData, { timeout: 15 * 60 * 1000});
       
       if (response.success) {
         console.log(response.data);
-        setAnalysisResults(response.data);
+        setAnalysisResults(response.data.analysis);
         
         // Update chat with analysis results
-        const analysisMessage: ChatMessage = {
-          id: Date.now().toString(),
-          type: 'bot',
-          message: `Analysis complete! I've analyzed ${uploadedFiles.length} contract(s). Key findings:\n\n• Overall Risk Score: ${response.data.overall_risk_score || 'N/A'}\n• Legal Risk Score: ${response.data.legal_risk_score || 'N/A'}\n• Financial Risk Score: ${response.data.financial_risk_score || 'N/A'}\n• Operational Risk Score: ${response.data.operational_risk_score || 'N/A'}\n• Total Clauses: ${response.data.clauses?.length || 0}\n• High Risk Clauses: ${response.data.clauses?.filter((c: Clause) => c.risk_tag === 'High').length || 0}`,
-          timestamp: new Date().toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit',
-            hour12: true 
-          })
-        };
+        const analysisMessage: ChatMessage = getAnalysisChatMsg(response.data.analysis, uploadedFiles);
         
         setChatMessages(prev => [...prev, analysisMessage]);
       } else {

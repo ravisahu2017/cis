@@ -19,7 +19,7 @@ from utils import logger
 from fastapi import HTTPException, status, Depends
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from utils.common_model import HttpBaseResponse
+from utils.common_model import HttpBaseResponse, PaginationResponse
 
 contract_router = APIRouter(
     prefix="/contract",
@@ -289,7 +289,7 @@ async def get_contracts(
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db_session_dep)
-) -> Dict[str, Any]:
+) -> HttpBaseResponse:
     """
     Get all contracts with pagination and filtering
     """
@@ -302,12 +302,19 @@ async def get_contracts(
             # Get all contracts (admin)
             contracts = contract_repo.search_contracts("", {}, limit, offset)
         
-        return {
-            "contracts": [contract.to_dict() for contract in contracts],
-            "total": len(contracts),
-            "limit": limit,
-            "offset": offset
-        }
+        response = HttpBaseResponse(
+            success=True,
+            message="Contracts retrieved successfully",
+            data=PaginationResponse(
+                total=len(contracts),
+                limit=limit,
+                offset=offset,
+                has_more=len(contracts) > limit,
+                items=[contract.to_dict() for contract in contracts]
+            )
+        )
+        return response
+        
     except Exception as e:
         logger.error(f"Get contracts error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get contracts")

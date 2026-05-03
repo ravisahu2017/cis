@@ -144,7 +144,7 @@ class ContractCrewManager:
                             clause_type=risk.get('clause_type', 'Unknown'),
                             content_summary=risk.get('content_summary', ''),
                             risk_score=risk.get('risk_score', 50),
-                            risk_level=RiskLevel(risk.get('risk_level', 'medium')),
+                            risk_level=risk.get('risk_level') or 'medium',
                             recommendations=risk.get('recommendations', []),
                             location=risk.get('location'),
                             severity=risk.get('severity')

@@ -3,34 +3,42 @@ Common Utilities - Package Initialization
 Shared utility functions for contract processing and analysis
 """
 
-from .contract_utils import (
-    extract_parties, extract_dates, extract_monetary_amounts,
-    infer_contract_type, generate_file_hash, calculate_similarity,
-    detect_changes, generate_contract_name, validate_contract_content
-)
+# Note: contract_utils moved to contract package to avoid circular imports
 from .text_utils import (
-    preprocess_text, extract_key_terms, calculate_text_complexity,
-    clean_text, normalize_text
+    preprocess_text, calculate_text_complexity,
+    clean_text, normalize_text, tokenize_text, remove_stopwords, extract_sentences
 )
+from .json_utils import (
+    safe_json_serialize, safe_json_dumps, safe_json_loads, safe_parse_json_field
+)
+from .logger import logger
+from .file_util import read_pdf, read_docx, read_txt, read_image
+
 
 __all__ = [
-    # Contract utilities
-    'extract_parties',
-    'extract_dates', 
-    'extract_monetary_amounts',
-    'infer_contract_type',
-    'generate_file_hash',
-    'calculate_similarity',
-    'detect_changes',
-    'generate_contract_name',
-    'validate_contract_content',
-    
     # Text utilities
     'preprocess_text',
-    'extract_key_terms',
+    'clean_text', 
+    'normalize_text',
     'calculate_text_complexity',
-    'clean_text',
-    'normalize_text'
+    'tokenize_text',
+    'remove_stopwords',
+    'extract_sentences'
+
+    # JSON utilities
+    'safe_json_serialize',
+    'safe_json_dumps',
+    'safe_json_loads',
+    'safe_parse_json_field',
+
+    # File utilities
+    'read_pdf',
+    'read_docx',
+    'read_txt',
+    'read_image',
+
+    # Logger
+    'logger'
 ]
 
 # Version info

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from storage.repository import TestRepository
 from storage.database import get_db_session
-from tools.logger import logger
+from utils import logger
 from sqlalchemy.orm import Session
 
 test_router = APIRouter(

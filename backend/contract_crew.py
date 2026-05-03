@@ -9,8 +9,7 @@ import json
 from crewai import Agent, Task, Crew, Process
 from crewai.llm import LLM
 from objects import ContractObject, ClauseAnalysisResult
-from tools.logger import logger
-from tools.file_util import read_pdf
+from utils import logger
 
 
 def get_llm(temperature: float = 0.1):

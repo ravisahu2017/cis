@@ -10,7 +10,7 @@ from .models import ChatRequest, ChatResponse, ChatSession, ChatCapabilities
 from .crew import chat_crew_manager
 from .intent_classifier import intent_classifier
 from .agents import get_agent_capabilities
-from tools.logger import logger
+from utils import logger
 
 class ChatService:
     """Main chat service orchestrating all chat functionality"""

@@ -6,7 +6,7 @@ Restructured FastAPI application with modular architecture
 
 import os
 from dotenv import load_dotenv
-from tools.logger import logger
+from utils import logger
 from app_config import create_app, register_routers, setup_middleware, setup_exception_handlers
 
 # Load environment variables

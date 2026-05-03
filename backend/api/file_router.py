@@ -10,9 +10,9 @@ from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
 import mimetypes
-from tools import file_util, image_util
+from tools import image_util
 from tools.s3_util import upload_file_object
-from tools.logger import logger
+from utils import logger, read_pdf, read_docx, read_txt
 
 file_router = APIRouter(
     prefix="/files",
@@ -95,11 +95,11 @@ async def upload_files(
                     
                     # Extract text content
                     if file_extension.lower() == 'pdf':
-                        text_content = file_util.read_pdf(temp_file_path)
+                        text_content = read_pdf(temp_file_path)
                     elif file_extension.lower() == 'docx':
-                        text_content = file_util.read_docx(temp_file_path)
+                        text_content = read_docx(temp_file_path)
                     elif file_extension.lower() == 'txt':
-                        text_content = file_util.read_txt(temp_file_path)
+                        text_content = read_txt(temp_file_path)
                     else:
                         text_content = ""
                     

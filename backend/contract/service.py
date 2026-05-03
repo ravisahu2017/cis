@@ -11,10 +11,10 @@ from .models import (
     ContractRequest, ContractResponse, ContractAnalysis, ContractCapabilities, 
     ContractAnalytics, AnalysisSession, AnalysisType, ContractType
 )
+from .utils import ContractUtils
 from .crew import contract_crew_manager
 from .agents import get_agent_capabilities
-from tools.logger import logger
-from tools.file_util import read_pdf, read_docx, read_txt, read_image
+from utils import logger, read_pdf, read_docx, read_txt, read_image
 from storage.repository import ContractRepository, AnalysisRepository
 from storage.database import get_database
 
@@ -75,11 +75,13 @@ class ContractService:
             logger.info(f"Starting contract analysis {analysis_id} for session {session.session_id}")
             
             # Process analysis
-            analysis = contract_crew_manager.analyze_contract(
-                text_content, 
-                analysis_types, 
-                analysis_id
-            )
+            # Use mock data for testing (remove LLM calls)
+            from contract.mock_data import get_mock_analysis
+            
+            analysis = get_mock_analysis(text_content, analysis_id, analysis_types)
+            
+            # Uncomment this line to enable real LLM calls:
+            # analysis = contract_crew_manager.analyze_contract(text_content, analysis_types, analysis_id)
             
             # Extract agents used from analysis types
             agents_used = [agent_type.value for agent_type in analysis_types]
@@ -373,9 +375,8 @@ class ContractService:
                 return contract
             else:
                 # Create new contract
-                from utils.contract_utils import infer_contract_type, extract_parties
-                contract_type = infer_contract_type(text_content) or request.contract_type_hint
-                parties = extract_parties(text_content)
+                contract_type = ContractUtils.infer_contract_type(text_content) or request.contract_type_hint
+                parties = ContractUtils.extract_parties(text_content)
                 
                 contract = self.contract_repo.create_contract(
                     contract_name=analysis.contract_name if 'analysis' in locals() else f"Contract {len(similar_contracts) + 1}",

@@ -8,7 +8,7 @@ import sqlite3
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
-from tools.logger import logger
+from utils import logger
 from .models import Base, ContractRecord, ContractVersion, AnalysisRecord, AnalysisQueue
 import uuid
 from datetime import datetime

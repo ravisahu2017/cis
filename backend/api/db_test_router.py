@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 from storage.database import get_db_session
 from storage.repository import ContractRepository, AnalysisRepository, TestRepository
 from storage.models import ContractRecord, ContractVersion, AnalysisRecord, TestRecord
-from tools.logger import logger
+from utils import logger
 
 db_test_router = APIRouter(prefix="/db-test", tags=["database-testing"])
 

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 import os
 from langchain_core.prompts import ChatPromptTemplate
-from tools.logger import logger
+from utils import logger
 from objects import ContractObject, ClauseRisk
 from datetime import date
 import re

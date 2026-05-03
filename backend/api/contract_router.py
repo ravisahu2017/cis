@@ -15,7 +15,7 @@ from contract.models import (
 from contract.service import contract_service
 from storage.repository import ContractRepository, AnalysisRepository
 from storage.database import get_db_session
-from tools.logger import logger
+from utils import logger
 from fastapi import HTTPException, status, Depends
 from typing import List, Optional
 from sqlalchemy.orm import Session

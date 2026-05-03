@@ -6,7 +6,7 @@ Defines specialized agents for chat functionality
 import os
 from crewai import Agent
 from crewai.llm import LLM
-from tools.logger import logger
+from utils import logger
 
 def get_chat_llm(temperature: float = 0.7):
     """Get LLM configured for chat conversations"""

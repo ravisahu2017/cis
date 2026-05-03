@@ -18,7 +18,7 @@ import mimetypes
 from tools import file_util, image_util
 import contract_crew
 from tools.s3_util import upload_file_object
-from tools.logger import logger
+from utils import logger
 from chat import chat_service
 from chat.models import ChatRequest, ChatResponse
 

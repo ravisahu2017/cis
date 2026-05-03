@@ -10,7 +10,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, asc, func
-from tools.logger import logger
+from utils import logger
 from .models import ContractRecord, ContractVersion, AnalysisRecord, AnalysisQueue, TestRecord
 from .database import get_db_session, get_database
 
@@ -250,11 +250,16 @@ class AnalysisRepository:
                        analysis_result: Dict, **kwargs) -> AnalysisRecord:
         """Create a new analysis record"""
         try:
+            # Process kwargs to handle list serialization
+            kwargs_dict = dict(kwargs)
+            if 'agents_used' in kwargs_dict and isinstance(kwargs_dict['agents_used'], list):
+                kwargs_dict['agents_used'] = json.dumps(kwargs_dict['agents_used'])
+            
             analysis = AnalysisRecord(
                 id=str(uuid.uuid4()),
                 version_id=version_id,
                 analysis_type=analysis_type,
-                **kwargs
+                **kwargs_dict
             )
             
             # Set analysis data from result
@@ -264,10 +269,13 @@ class AnalysisRepository:
                 analysis.legal_risk_score = analysis_result.legal_risk_score
                 analysis.financial_risk_score = analysis_result.financial_risk_score
                 analysis.operational_risk_score = analysis_result.operational_risk_score
-                analysis.analysis_json = analysis_result.dict()
-                analysis.clauses_json = str([clause.dict() for clause in analysis_result.clauses])
-                analysis.executive_summary = analysis_result.executive_summary
-                analysis.key_recommendations = str(analysis_result.key_recommendations)
+                # Use utility function for safe JSON serialization
+            from utils.json_utils import safe_json_serialize, safe_json_dumps
+            
+            analysis.analysis_json = safe_json_dumps(analysis_result)
+            analysis.clauses_json = safe_json_dumps(analysis_result.clauses)
+            analysis.executive_summary = analysis_result.executive_summary
+            analysis.key_recommendations = safe_json_dumps(analysis_result.key_recommendations)
             
             self.session.add(analysis)
             self.session.commit()

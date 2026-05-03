@@ -4,21 +4,70 @@ Functions for text processing, cleaning, and analysis
 """
 
 import re
-from typing import List, Dict, Optional, Tuple
-from .contract_utils import preprocess_text, clean_text, normalize_text
+from typing import List, Dict
+
 
 # Re-export from contract_utils for backward compatibility
 __all__ = [
     'preprocess_text',
     'clean_text', 
     'normalize_text',
-    'extract_key_terms',
     'calculate_text_complexity',
     'tokenize_text',
     'remove_stopwords',
-    'extract_sentences',
-    'calculate_readability'
+    'extract_sentences'
 ]
+
+# Wrapper functions for ContractUtils methods
+def preprocess_text(text: str) -> str:
+    """Preprocess contract text for analysis"""
+    # Remove excessive whitespace
+    text = re.sub(r'\s+', ' ', text)
+    
+    # Remove common artifacts
+    text = re.sub(r'\f', ' ', text)  # Form feeds
+    text = re.sub(r'\x0c', ' ', text)  # Form feed characters
+    
+    # Normalize line endings
+    text = re.sub(r'\r\n|\r|\n', ' ', text)
+    
+    # Remove page numbers and headers/footers patterns
+    text = re.sub(r'Page\s+\d+\s+of\s+\d+', ' ', text)
+    text = re.sub(r'\d+\s+/\s+\d+', ' ', text)
+    
+    # Clean up extra spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
+
+def clean_text(text: str) -> str:
+    """Clean contract text for storage"""
+    if not text:
+        return ""
+    
+    # Remove control characters
+    text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+    
+    # Normalize whitespace
+    text = re.sub(r'\s+', ' ', text)
+    
+    return text.strip()
+
+def normalize_text(text: str) -> str:
+    """Normalize text for comparison"""
+    if not text:
+        return ""
+    
+    # Convert to lowercase
+    text = text.lower()
+    
+    # Remove extra whitespace
+    text = re.sub(r'\s+', ' ', text)
+    
+    # Remove punctuation
+    text = re.sub(r'[^\w\s]', '', text)
+    
+    return text.strip()
 
 def tokenize_text(text: str, lowercase: bool = True) -> List[str]:
     """Tokenize text into words"""
@@ -68,62 +117,43 @@ def extract_sentences(text: str) -> List[str]:
     
     return cleaned_sentences
 
-def calculate_readability(text: str) -> Dict:
-    """Calculate readability metrics for text"""
+def calculate_text_complexity(text: str) -> Dict:
+    """Calculate text complexity metrics"""
     if not text:
-        return {'readability_score': 0, 'metrics': {}}
+        return {'complexity_score': 0, 'metrics': {}}
     
-    sentences = extract_sentences(text)
-    words = tokenize_text(text, lowercase=False)
-    
-    if not sentences or not words:
-        return {'readability_score': 0, 'metrics': {}}
+    words = text.split()
+    sentences = re.split(r'[.!?]+', text)
+    sentences = [s.strip() for s in sentences if s.strip()]
     
     # Calculate metrics
-    avg_sentence_length = len(words) / len(sentences)
-    avg_word_length = sum(len(word) for word in words) / len(words)
+    avg_word_length = sum(len(word) for word in words) / len(words) if words else 0
+    avg_sentence_length = len(words) / len(sentences) if sentences else 0
     
     # Count complex words (more than 6 characters)
     complex_words = [word for word in words if len(word) > 6]
-    complex_word_ratio = len(complex_words) / len(words)
+    complex_word_ratio = len(complex_words) / len(words) if words else 0
     
-    # Simple readability score (lower is easier to read)
-    readability_score = int(
-        (avg_sentence_length * 2) +  # Sentence length factor
-        (avg_word_length * 3) +      # Word length factor
-        (complex_word_ratio * 20)     # Complex words factor
-    )
+    # Count legal/technical terms
+    legal_terms = ['whereas', 'hereinafter', 'notwithstanding', 'pursuant', 'heretofore']
+    legal_term_count = sum(1 for term in legal_terms if term in text.lower())
+    
+    # Calculate complexity score (0-100)
+    complexity_score = min(100, int(
+        (avg_word_length * 10) +  # Word length contribution
+        (avg_sentence_length * 5) +  # Sentence length contribution
+        (complex_word_ratio * 30) +  # Complex words contribution
+        (legal_term_count * 5)  # Legal terms contribution
+    ))
     
     return {
-        'readability_score': readability_score,
+        'complexity_score': complexity_score,
         'metrics': {
-            'sentence_count': len(sentences),
             'word_count': len(words),
-            'avg_sentence_length': avg_sentence_length,
+            'sentence_count': len(sentences),
             'avg_word_length': avg_word_length,
+            'avg_sentence_length': avg_sentence_length,
             'complex_word_ratio': complex_word_ratio,
-            'complex_word_count': len(complex_words)
-        },
-        'interpretation': {
-            'level': 'Complex' if readability_score > 30 else 'Moderate' if readability_score > 15 else 'Simple',
-            'description': get_readability_description(readability_score)
+            'legal_term_count': legal_term_count
         }
     }
-
-def get_readability_description(score: int) -> str:
-    """Get description for readability score"""
-    if score < 10:
-        return "Very easy to read"
-    elif score < 15:
-        return "Easy to read"
-    elif score < 25:
-        return "Fairly easy to read"
-    elif score < 35:
-        return "Standard readability"
-    elif score < 45:
-        return "Fairly difficult to read"
-    else:
-        return "Difficult to read"
-
-# Re-export functions from contract_utils for convenience
-from .contract_utils import extract_key_terms, calculate_text_complexity

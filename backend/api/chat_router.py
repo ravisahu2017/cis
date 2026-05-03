@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any
 from chat import chat_service
 from chat.models import ChatRequest, ChatResponse
-from tools.logger import logger
+from utils import logger
 
 chat_router = APIRouter(
     prefix="/chat",

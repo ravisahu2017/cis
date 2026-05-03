@@ -6,7 +6,7 @@ Defines specialized agents for contract analysis functionality
 import os
 from crewai import Agent
 from crewai.llm import LLM
-from tools.logger import logger
+from utils import logger
 
 def get_contract_llm(temperature: float = 0.1):
     """Get LLM configured for contract analysis"""

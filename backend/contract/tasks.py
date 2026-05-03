@@ -7,7 +7,7 @@ from typing import List
 from crewai import Task
 from .agents import get_agent_by_type, coordinator_agent
 from .models import AnalysisType, ContractAnalysis, ContractMetadata, ClauseAnalysisResult
-from tools.logger import logger
+from utils import logger
 
 def create_legal_analysis_task(text_content: str) -> Task:
     """Create legal analysis task"""

@@ -1,7 +1,7 @@
 import os
 import boto3
 from botocore.exceptions import NoCredentialsError
-from tools.logger import logger
+from utils import logger
 
 def download_from_s3(s3_key, local_path):
     """Downloads a file from S3 to a local path"""

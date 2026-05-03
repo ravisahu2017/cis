@@ -11,7 +11,7 @@ from crewai.llm import LLM
 from .agents import get_all_contract_agents, get_primary_analysis_agents, coordinator_agent
 from .tasks import create_analysis_tasks
 from .models import ContractAnalysis, ClauseRisk, ContractMetadata, AnalysisType, RiskLevel
-from tools.logger import logger
+from utils import logger
 
 class ContractCrewManager:
     """Manages contract analysis crews for different analysis types"""

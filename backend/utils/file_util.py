@@ -3,7 +3,7 @@ import pytesseract
 from docx import Document
 from PIL import Image
 
-from tools.logger import logger
+from .logger import logger
 
 def read_pdf(file_path: str) -> str:
     text_content = ""

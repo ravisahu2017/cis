@@ -10,7 +10,7 @@ from crewai.llm import LLM
 from .agents import get_agent_by_intent, get_all_agents, coordinator
 from .intent_classifier import intent_classifier
 from .models import ChatResponse
-from tools.logger import logger
+from utils import logger
 
 class ChatCrewManager:
     """Manages chat crews for different conversation types"""

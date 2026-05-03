@@ -5,7 +5,7 @@ Provides system health and status endpoints
 
 from fastapi import APIRouter, Depends
 from typing import Dict, Any
-from tools.logger import logger
+from utils import logger
 
 health_router = APIRouter(
     prefix="/health",

@@ -7,6 +7,7 @@ from .service import contract_service
 from .models import ContractRequest, ContractResponse, ContractMetadata
 from .agents import get_agent_by_type, get_all_contract_agents
 from .crew import contract_crew_manager
+from .utils import ContractUtils
 
 __all__ = [
     'contract_service',
@@ -15,7 +16,8 @@ __all__ = [
     'ContractMetadata',
     'get_agent_by_type',
     'get_all_contract_agents',
-    'contract_crew_manager'
+    'contract_crew_manager',
+    'ContractUtils',
 ]
 
 # Version info

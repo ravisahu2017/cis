@@ -22,6 +22,11 @@ interface UploadedFile {
   type: string;
   uploadedAt: string;
   file: File; // Store actual File object for API upload
+  uploadStatus?: 'pending' | 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed';
+  analysisId?: string;
+  uploadProgress?: number;
+  errorMessage?: string;
+  processingPercentage?: number;
 }
 
 interface Clause {

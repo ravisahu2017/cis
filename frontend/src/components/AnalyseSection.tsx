@@ -1,11 +1,12 @@
 
 import { motion } from 'framer-motion';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
-  Upload, X, File, Loader2, FileText, TrendingUp 
+  Upload, X, File, Loader2, FileText, TrendingUp, CheckCircle, AlertCircle, Clock 
 } from 'lucide-react';
 import { backendApi } from '@/utils/api';
 import contractController from '@/controllers/contract'
+import UploadedFileSection from './UploadedFileSection';
 
 
 
@@ -41,8 +42,8 @@ export default function AnalyseSection({ onAnalysisComplete }: {
 
     const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-        const files = Array.from(e.target.files);
-        handleFiles(files);
+            const files = Array.from(e.target.files);
+            handleFiles(files);
         }
     };
 
@@ -57,61 +58,77 @@ export default function AnalyseSection({ onAnalysisComplete }: {
             minute: '2-digit',
             hour12: true 
         }),
-        file: file // Store actual File object
+        file: file, // Store actual File object
+        uploadStatus: 'pending',
+        uploadProgress: 0
         }));
 
         setUploadedFiles(prev => [...prev, ...newFiles]);
     };
+
+    const uploadFile = async (file: UploadedFile) => {
+        // Update status to uploading
+        setUploadedFiles(prev => prev.map(f => 
+            f.id === file.id ? { ...f, uploadStatus: 'uploading', uploadProgress: 0 } : f
+        ));
+
+        try {
+            // Simulate upload progress
+            const progressInterval = setInterval(() => {
+                setUploadedFiles(prev => prev.map(f => {
+                    if (f.id === file.id && f.uploadStatus === 'uploading') {
+                        const newProgress = Math.min((f.uploadProgress || 0) + 10, 90);
+                        return { ...f, uploadProgress: newProgress };
+                    }
+                    return f;
+                }));
+            }, 200);
+
+            // send file for analysis
+            const response = await contractController.analyse(["legal"], file.file);
+
+            clearInterval(progressInterval);
+
+            if (response.success && response.data?.analysis_id) {
+                // Update status to uploaded and start processing
+                setUploadedFiles(prev => prev.map(f => 
+                    f.id === file.id ? { 
+                        ...f, 
+                        uploadStatus: 'uploaded', 
+                        uploadProgress: 100,
+                        analysisId: response.data.analysis_id
+                    } : f
+                ));
+
+                // Start polling for analysis status
+                pollAnalysisStatus(file.id, response.data.analysis_id);
+            } else {
+                throw new Error(response.error || 'Upload failed');
+            }
+        } catch (error) {
+            clearInterval(progressInterval);
+            setUploadedFiles(prev => prev.map(f => 
+                f.id === file.id ? { 
+                    ...f, 
+                    uploadStatus: 'failed',
+                    errorMessage: error instanceof Error ? error.message : 'Upload failed'
+                } : f
+            ));
+        }
+    };
+
+  
+
+
 
     const removeFile = (fileId: string) => {
         setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
     };
 
     const analyzeContracts = async () => {
-        if (uploadedFiles.length === 0) return;
-        
-        setIsAnalyzing(true);
-        
-        try {
-            // Create FormData for file upload
-            const formData = new FormData();
-            
-            // Add files to FormData - backend expects 'files' field with actual File objects
-            uploadedFiles.forEach((uploadedFile) => {
-                formData.append('file', uploadedFile.file);
-            });
-            
-            // Add analysis_types key with ["legal"] as value
-            formData.append('analysis_types', ["legal"]);
-            
-            // Call backend API
-            const response = await backendApi.postFormData('/contract/analyze', formData, { timeout: 15 * 60 * 1000});
-            
-            if (response.success) {
-                setAnalysisResults(response.data.analysis);
-                onAnalysisComplete(response.data.analysis);
-            } else {
-                throw new Error(response.error || 'Analysis failed');
-            }
-        } catch (error) {
-            console.error('Contract analysis error:', error);
-        
-        // Update chat with error message
-        const errorMessage: ChatMessage = {
-            id: Date.now().toString(),
-            type: 'bot',
-            message: `Sorry, I encountered an error while analyzing the contracts: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
-            timestamp: new Date().toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit',
-            hour12: true 
-            })
-        };
-        
-        setChatMessages(prev => [...prev, errorMessage]);
-        } finally {
-            setIsAnalyzing(false);
-        }
+        // This function is now handled automatically by uploadFile
+        // Files are uploaded and analyzed as soon as they are added
+        console.log('Files are automatically uploaded and analyzed upon selection');
     };
 
     const clearAllFiles = () => {
@@ -119,13 +136,7 @@ export default function AnalyseSection({ onAnalysisComplete }: {
         setAnalysisResults(null);
     };
 
-    const formatFileSize = (bytes: number) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
+    
 
     const toggleCategory = (category: string) => {
         setCollapsedCategories(prev => {
@@ -140,30 +151,9 @@ export default function AnalyseSection({ onAnalysisComplete }: {
     };
 
     const uploadedFile = (file: any) => {
-        return (<motion.div
-            key={file.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-        >
-            <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <File className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                    <p className="text-sm font-medium">{file.name}</p>
-                    <p className="text-xs text-gray-500">
-                    {formatFileSize(file.size)} • {file.uploadedAt}
-                    </p>
-                </div>
-            </div>
-            <button
-                onClick={() => removeFile(file.id)}
-                className="p-1 hover:bg-gray-200 rounded transition-colors"
-                >
-                <X className="w-4 h-4 text-gray-500" />
-            </button>
-        </motion.div>)
+        return <UploadedFileSection fileToUpload={file} onAnalysisComplete={(analysis) => {
+            setAnalysisResults(analysis);
+        }} />;
     }
  
     return (
@@ -216,29 +206,31 @@ export default function AnalyseSection({ onAnalysisComplete }: {
                 <h4 className="font-medium mb-4">Uploaded Files ({uploadedFiles.length})</h4>
                 <div className="space-y-3">
                   {uploadedFiles.map((file) => (
-                    uploadedFile(file)
+                    <div key={file.id} className="flex items-center justify-between">
+                        <div className="flex-1">
+                            {uploadedFile(file)}
+                        </div>
+                        {file.uploadStatus !== 'processing' && file.uploadStatus !== 'uploading' && (
+                            <button
+                                onClick={() => removeFile(file.id)}
+                                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                            >
+                                <X className="w-4 h-4 text-gray-500" />
+                            </button>
+                        )}
+                    </div>
                   ))}
                 </div>
                 {uploadedFiles.length > 0 && (
                   <div className="mt-4 flex space-x-3">
-                    <button
-                      onClick={analyzeContracts}
-                      disabled={isAnalyzing}
-                      className="flex-1 px-4 py-2 bg-[#1A1A1A] text-white rounded-lg hover:bg-[#2A2A2A] transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        'Analyze All Contracts'
-                      )}
-                    </button>
+                    <div className="flex-1 text-center">
+                      <p className="text-xs text-gray-500">
+                        Files are automatically uploaded and analyzed
+                      </p>
+                    </div>
                     <button
                       onClick={clearAllFiles}
-                      disabled={isAnalyzing}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
                     >
                       Clear All
                     </button>

@@ -20,6 +20,19 @@ export default class ContractController {
         }
     }
 
+    static async analyse(analysis_types: string[], file: File): Promise<any> {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('analysis_types', JSON.stringify(analysis_types));
+            const response = await backendApi.postFormData('/contract/analyze', formData);
+            return response;
+        } catch (error) {
+            console.error('Failed to analyse contract:', error);
+            return null;
+        }
+    }
+
     static async fetchAnalysisStatus(userId: string = 'default', analysisId: string): Promise<any> {
         try {
             const response = await backendApi.get(`/contract/analysis/${analysisId}/status`);

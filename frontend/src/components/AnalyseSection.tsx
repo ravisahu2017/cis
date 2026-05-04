@@ -7,12 +7,15 @@ import {
 import { backendApi } from '@/utils/api';
 import contractController from '@/controllers/contract'
 import UploadedFileSection from './UploadedFileSection';
+import SectionNavigation from './SectionNavigation';
 
+interface AnalyseSectionProps {
+  onAnalysisComplete: (analysis: any) => void;
+  onBack?: () => void;
+  onHome?: () => void;
+}
 
-
-export default function AnalyseSection({ onAnalysisComplete }: { 
-    onAnalysisComplete: (analysis: any) => void 
-}) {
+export default function AnalyseSection({ onAnalysisComplete, onBack, onHome }: AnalyseSectionProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -175,10 +178,16 @@ export default function AnalyseSection({ onAnalysisComplete }: {
  
     return (
         <div className="flex-1 overflow-y-auto">
-            <div className="mb-8">
-                <h1 className="text-3xl font-light mb-2">Upload Contracts</h1>
-                <p className="text-gray-600">Upload your contracts for analysis</p>
-            </div>
+            <SectionNavigation
+                title="Upload Contracts"
+                subtitle="Upload your contracts for analysis"
+                showBackButton={!!onBack}
+                showHomeButton={!!onHome}
+                onBack={onBack}
+                onHome={onHome}
+            />
+            
+            <div className="px-6 py-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             {/* Upload Area */}
             <div
@@ -470,6 +479,7 @@ export default function AnalyseSection({ onAnalysisComplete }: {
             </div>
             )}
           </div>
+            </div>
         </div>
     )
 }

@@ -79,6 +79,14 @@ export default function Home() {
     setMainSection('contract-list');
   };
 
+  const handleHome = () => {
+    setMainSection('dashboard');
+  };
+
+  const handleBackToDashboard = () => {
+    setMainSection('dashboard');
+  };
+
 
   const mainContent = () => {
     switch (mainSection) {
@@ -87,14 +95,21 @@ export default function Home() {
                 onAnalysisComplete={(analysis) => {
                   setAnalysisResults(analysis);
                 }}
+                onBack={handleBackToDashboard}
+                onHome={handleHome}
               />;
       case 'contract-list':
-        return <ContractListSection onContractSelect={handleContractSelect} />;
+        return <ContractListSection 
+                onContractSelect={handleContractSelect}
+                onBack={handleBackToDashboard}
+                onHome={handleHome}
+              />;
       case 'contract':
         return selectedContractId ? (
           <ContractSection 
             contractId={selectedContractId} 
-            onBack={handleBackToContracts} 
+            onBack={handleBackToContracts}
+            onHome={handleHome}
           />
         ) : null;
       default:
@@ -113,6 +128,7 @@ export default function Home() {
                 setAnalysisResults(analysis);
               }}
               onDashboardAction={handleDashboardAction}
+              onHome={handleHome}
             />;
     }
   };

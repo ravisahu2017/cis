@@ -7,12 +7,15 @@ import {
 } from 'lucide-react';
 import { Contract } from '@/models/models';
 import contractController from '@/controllers/contract';
+import SectionNavigation from './SectionNavigation';
 
 interface ContractListSectionProps {
   onContractSelect?: (contractId: string) => void;
+  onBack?: () => void;
+  onHome?: () => void;
 }
 
-export default function ContractListSection({ onContractSelect }: ContractListSectionProps) {
+export default function ContractListSection({ onContractSelect, onBack, onHome }: ContractListSectionProps) {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -107,29 +110,38 @@ export default function ContractListSection({ onContractSelect }: ContractListSe
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-light">All Contracts</h2>
-        <button
-          onClick={() => {
-            setCurrentPage(1);
-            fetchContracts();
-          }}
-          disabled={isLoadingContracts}
-          className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-        >
-          {isLoadingContracts ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Loading...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </>
-          )}
-        </button>
-      </div>
+      <SectionNavigation
+        title="All Contracts"
+        subtitle="Browse and manage your contract portfolio"
+        showBackButton={!!onBack}
+        showHomeButton={!!onHome}
+        onBack={onBack}
+        onHome={onHome}
+        extraActions={
+          <button
+            onClick={() => {
+              setCurrentPage(1);
+              fetchContracts();
+            }}
+            disabled={isLoadingContracts}
+            className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            {isLoadingContracts ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </>
+            )}
+          </button>
+        }
+      />
+      
+      <div className="px-6 py-6">
 
       {/* Filters and Search */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
@@ -345,6 +357,7 @@ export default function ContractListSection({ onContractSelect }: ContractListSe
           )}
         </div>
       )}
+        </div>
     </div>
   );
 }

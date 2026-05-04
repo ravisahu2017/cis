@@ -14,6 +14,7 @@ import {
 } from '@/models/models';
 import { getDummyDashboardTiles } from '@/models/dummy';
 import { getTilesFromAnalysis } from '@/models/dataFiller';
+import SectionNavigation from './SectionNavigation';
 
 interface CTA {
   action: string;
@@ -30,6 +31,7 @@ interface DashboardSectionProps {
   isLoadingAnalyses: boolean;
   fetchRecentAnalysis: () => void;
   onDashboardAction?: (cta: CTA) => void;
+  onHome?: () => void;
 }
 
 export default function DashboardSection({
@@ -37,7 +39,8 @@ export default function DashboardSection({
   recentAnalyses,
   isLoadingAnalyses,
   fetchRecentAnalysis,
-  onDashboardAction
+  onDashboardAction,
+  onHome
 }: DashboardSectionProps) {
 
   // Generate dynamic dashboard tiles based on analysis results
@@ -56,11 +59,15 @@ export default function DashboardSection({
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-light mb-2">Dashboard Overview</h1>
-          <p className="text-gray-600">Monitor your contract intelligence metrics</p>
-        </div>
+      <SectionNavigation
+        title="Dashboard Overview"
+        subtitle="Monitor your contract intelligence metrics"
+        showBackButton={false}
+        showHomeButton={false}
+        onHome={onHome}
+      />
+      
+      <div className="max-w-6xl px-6 py-6">
 
    
 
@@ -93,105 +100,6 @@ export default function DashboardSection({
             </motion.div>
           ))}
         </div>
-
-        {/* All Contracts Section */}
-        {/* <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-light">All Contracts</h2>
-            <button
-              onClick={fetchContracts}
-              disabled={isLoadingContracts}
-              className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-            >
-              {isLoadingContracts ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                'Refresh'
-              )}
-            </button>
-          </div>
-          
-          {isLoadingContracts ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-            </div>
-          ) : contracts.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No contracts found in database</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contract Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Score</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {contracts.map((contract) => (
-                      <tr key={contract.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <FileText className="w-4 h-4 text-gray-400 mr-3" />
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{contract.contract_name}</div>
-                              <div className="text-xs text-gray-500">{(contract.file_size / 1024 / 1024).toFixed(2)} MB</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                            {contract.contract_type || 'Unknown'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            contract.analysis_status === 'completed' ? 'bg-green-100 text-green-800' :
-                            contract.analysis_status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                            contract.analysis_status === 'failed' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {contract.analysis_status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(contract.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {contract.analysis_data?.overall_risk_score ? (
-                            <div className="flex items-center">
-                              <span className={`text-sm font-medium ${
-                                contract.analysis_data.overall_risk_score >= 70 ? 'text-red-600' :
-                                contract.analysis_data.overall_risk_score >= 40 ? 'text-yellow-600' :
-                                'text-green-600'
-                              }`}>
-                                {contract.analysis_data.overall_risk_score}
-                              </span>
-                              <span className="ml-2 text-xs text-gray-500">
-                                {getRiskLevel(contract.analysis_data.overall_risk_score)}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div> */}
 
         {/* Recent Analyses Section */}
         <div className="mt-8">

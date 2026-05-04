@@ -8,13 +8,15 @@ import {
 } from 'lucide-react';
 import { Contract } from '@/models/models';
 import contractController from '@/controllers/contract';
+import SectionNavigation from './SectionNavigation';
 
 interface ContractSectionProps {
   contractId: string;
   onBack: () => void;
+  onHome?: () => void;
 }
 
-export default function ContractSection({ contractId, onBack }: ContractSectionProps) {
+export default function ContractSection({ contractId, onBack, onHome }: ContractSectionProps) {
   const [contract, setContract] = useState<Contract | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,30 +93,19 @@ export default function ContractSection({ contractId, onBack }: ContractSectionP
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={onBack}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">{contract.contract_name}</h1>
-                <p className="text-sm text-gray-500">Contract Details</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusColor(contract.analysis_status)}`}>
-                {contract.analysis_status}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SectionNavigation
+        title={contract.contract_name}
+        subtitle="Contract Details"
+        showBackButton={true}
+        showHomeButton={!!onHome}
+        onBack={onBack}
+        onHome={onHome}
+        extraActions={
+          <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusColor(contract.analysis_status)}`}>
+            {contract.analysis_status}
+          </span>
+        }
+      />
 
       <div className="px-6 py-6 space-y-6">
         {/* Contract Information */}

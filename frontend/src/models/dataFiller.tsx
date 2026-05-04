@@ -81,11 +81,11 @@ export function getTilesFromAnalysis(analysisResults: AnalysisData): DashboardTi
     ];
 }
 
-export function getAnalysisChatMsg(analysis: AnalysisData, uploadedFiles: File[]): ChatMessage {
+export function getAnalysisChatMsg(analysis: AnalysisData, fileCount: number): ChatMessage {
   const analysisMessage: ChatMessage = {
     id: Date.now().toString(),
     type: 'bot',
-    message: `Analysis complete! I've analyzed ${uploadedFiles.length} contract(s). Key findings:\n\n• Overall Risk Score: ${analysis.overall_risk_score || 'N/A'}\n• Legal Risk Score: ${analysis.legal_risk_score || 'N/A'}\n• Financial Risk Score: ${analysis.financial_risk_score || 'N/A'}\n• Operational Risk Score: ${analysis.operational_risk_score || 'N/A'}\n• Total Clauses: ${analysis.clauses?.length || 0}\n• High Risk Clauses: ${analysis.clauses?.filter((c: Clause) => c.risk_tag === 'High').length || 0}`,
+    message: `Analysis complete! I've analyzed ${fileCount} contract(s). Key findings:\n\n• Overall Risk Score: ${analysis.overall_risk_score || 'N/A'}\n• Legal Risk Score: ${analysis.legal_risk_score || 'N/A'}\n• Financial Risk Score: ${analysis.financial_risk_score || 'N/A'}\n• Operational Risk Score: ${analysis.operational_risk_score || 'N/A'}\n• Total Clauses: ${analysis.clauses?.length || 0}\n• High Risk Clauses: ${analysis.clauses?.filter((c: Clause) => c.risk_tag === 'High').length || 0}`,
     timestamp: new Date().toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',

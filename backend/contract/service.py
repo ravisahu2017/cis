@@ -229,8 +229,12 @@ class ContractService:
     
     def _process_queue(self):
         """Process next item in queue if slots available"""
-        while (self.analysis_queue and 
-               len(self.active_sessions) < self.max_concurrent_analyses):
+        while self.analysis_queue:
+            active_count = sum(1 for s in self.active_sessions.values() 
+                               if s.status == AnalysisStatus.PROCESSING)
+            
+            if active_count >= self.max_concurrent_analyses:
+                break
             
             # Get next item
             queue_item = self.analysis_queue.pop(0)
@@ -238,6 +242,7 @@ class ContractService:
             
             # Move to active sessions
             session = queue_item['session']
+            session.status = AnalysisStatus.PROCESSING
             self.active_sessions[analysis_id] = session
             
             # Start analysis

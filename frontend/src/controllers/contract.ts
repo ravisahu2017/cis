@@ -11,12 +11,59 @@ export default class ContractController {
             });
             const response = await backendApi.get(`/contract/contracts?${params.toString()}`, {});
             if (response.success && response.data) {
-                return response.data.items || [];
+                // Handle paginated response
+                if (response.data.items && Array.isArray(response.data.items)) {
+                    return response.data.items;
+                }
+                // Handle direct array response (fallback)
+                if (Array.isArray(response.data)) {
+                    return response.data;
+                }
+                return [];
             }
             return [];
         } catch (error) {
             console.error('Failed to fetch contracts:', error);
             return [];
+        }
+    }
+
+    // New method to fetch with pagination metadata
+    static async fetchWithPagination(userId: string = 'default', limit: number = 5, offset: number = 0): Promise<{
+        items: Contract[];
+        totalCount: number;
+        hasMore: boolean;
+    }> {
+        try {
+            const params = new URLSearchParams({
+                user_id: userId,
+                limit: limit.toString(),
+                offset: offset.toString()
+            });
+            const response = await backendApi.get(`/contract/contracts?${params.toString()}`, {});
+            if (response.success && response.data) {
+                const items = response.data.items || [];
+                const totalCount = response.data.total_count || items.length;
+                const hasMore = response.data.has_more !== undefined ? response.data.has_more : items.length === limit;
+                
+                return {
+                    items,
+                    totalCount,
+                    hasMore
+                };
+            }
+            return {
+                items: [],
+                totalCount: 0,
+                hasMore: false
+            };
+        } catch (error) {
+            console.error('Failed to fetch contracts:', error);
+            return {
+                items: [],
+                totalCount: 0,
+                hasMore: false
+            };
         }
     }
 

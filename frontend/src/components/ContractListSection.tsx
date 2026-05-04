@@ -18,20 +18,32 @@ export default function ContractListSection({ onContractSelect }: ContractListSe
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('created_at');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
-  // Fetch contracts on component mount
+  // Fetch contracts on component mount and when pagination changes
   useEffect(() => {
     fetchContracts();
-  }, []);
+  }, [currentPage, pageSize]);
 
   const fetchContracts = async () => {
     setIsLoadingContracts(true);
     try {
-      const fetchedContracts = await contractController.fetch();
-      setContracts(fetchedContracts || []);
+      const offset = (currentPage - 1) * pageSize;
+      const paginatedResponse = await contractController.fetchWithPagination('default', pageSize, offset);
+      
+      setContracts(paginatedResponse.items);
+      setTotalCount(paginatedResponse.totalCount);
+      setHasMore(paginatedResponse.hasMore);
     } catch (error) {
       console.error('Failed to fetch contracts:', error);
       setContracts([]);
+      setTotalCount(0);
+      setHasMore(false);
     } finally {
       setIsLoadingContracts(false);
     }
@@ -71,12 +83,37 @@ export default function ContractListSection({ onContractSelect }: ContractListSe
     }
   };
 
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (hasMore) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">All Contracts</h2>
         <button
-          onClick={fetchContracts}
+          onClick={() => {
+            setCurrentPage(1);
+            fetchContracts();
+          }}
           disabled={isLoadingContracts}
           className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
@@ -236,9 +273,76 @@ export default function ContractListSection({ onContractSelect }: ContractListSe
           </div>
           
           {/* Results count */}
-          <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
-            Showing {filteredAndSortedContracts.length} of {contracts.length} contracts
+          <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
+            <span>
+              Showing {filteredAndSortedContracts.length} of {contracts.length} contracts
+              {totalCount > 0 && ` (Page ${currentPage})`}
+            </span>
+            
+            {/* Page Size Selector */}
+            <div className="flex items-center space-x-2">
+              <span className="text-gray-500">Show:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
           </div>
+          
+          {/* Pagination Controls */}
+          {contracts.length > 0 && (
+            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Page {currentPage}
+                {totalCount > 0 && ` of ${Math.ceil(totalCount / pageSize)}`}
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                
+                {/* Page Numbers */}
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, Math.ceil(totalCount / pageSize)) }, (_, i) => {
+                    const pageNum = i + 1;
+                    const isActive = pageNum === currentPage;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`w-8 h-8 text-sm border rounded transition-colors ${
+                          isActive
+                            ? 'bg-blue-500 text-white border-blue-500'
+                            : 'border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={handleNextPage}
+                  disabled={!hasMore}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -15,30 +15,29 @@ import {
 import { getDummyDashboardTiles } from '@/models/dummy';
 import { getTilesFromAnalysis } from '@/models/dataFiller';
 
+interface CTA {
+  action: string;
+  data: any;
+}
 
 interface DashboardSectionProps {
   analysisResults: AnalysisData | null;
   
-  // Contracts
-  contracts: Contract[];
-  isLoadingContracts: boolean;
-  fetchContracts: () => void;
   getRiskLevel: (score: number) => string;
   
   // Recent Analyses
   recentAnalyses: RecentAnalysis[];
   isLoadingAnalyses: boolean;
   fetchRecentAnalysis: () => void;
+  onDashboardAction?: (cta: CTA) => void;
 }
 
 export default function DashboardSection({
-  contracts,
-  isLoadingContracts,
-  fetchContracts,
   getRiskLevel,
   recentAnalyses,
   isLoadingAnalyses,
-  fetchRecentAnalysis
+  fetchRecentAnalysis,
+  onDashboardAction
 }: DashboardSectionProps) {
 
   // Generate dynamic dashboard tiles based on analysis results
@@ -50,8 +49,13 @@ export default function DashboardSection({
     return getDummyDashboardTiles();
   };
 
+  const handleTileClick = (section: string) => {
+    console.log('Tile clicked:', section);
+    onDashboardAction?.({ action: 'tile-click', data: { section } });
+  };
+
   return (
-    <div className="flex-1 p-6 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto">
       <div className="max-w-6xl">
         <div className="mb-8">
           <h1 className="text-3xl font-light mb-2">Dashboard Overview</h1>
@@ -69,6 +73,7 @@ export default function DashboardSection({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              onClick={() => tile.onClick && handleTileClick(tile.onClick)}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className={`p-3 rounded-lg ${tile.color}`}>
@@ -90,7 +95,7 @@ export default function DashboardSection({
         </div>
 
         {/* All Contracts Section */}
-        <div className="mt-8">
+        {/* <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-light">All Contracts</h2>
             <button
@@ -186,7 +191,7 @@ export default function DashboardSection({
               </div>
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Recent Analyses Section */}
         <div className="mt-8">

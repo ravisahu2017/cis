@@ -174,8 +174,11 @@ export default function AnalyseSection({ onAnalysisComplete }: {
     }
  
     return (
-        <div className="mt-8 mb-8">
-          <h2 className="text-xl font-light mb-4">Upload Contracts</h2>
+        <div className="flex-1 overflow-y-auto">
+            <div className="mb-8">
+                <h1 className="text-3xl font-light mb-2">Upload Contracts</h1>
+                <p className="text-gray-600">Upload your contracts for analysis</p>
+            </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             {/* Upload Area */}
             <div

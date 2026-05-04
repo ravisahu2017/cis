@@ -12,31 +12,19 @@ import { DashboardTile, ChatMessage, UploadedFile, AnalysisData, Contract, Contr
 import { getDummyDashboardTiles } from '@/models/dummy';
 import { getTilesFromAnalysis , getAnalysisChatMsg } from '@/models/dataFiller';
 import AnalyseSection from '@/components/AnalyseSection';
+import ContractsSection from '@/components/ContractsSection';
 
 export default function Home() {
   
   const [analysisResults, setAnalysisResults] = useState<AnalysisData | null>(null);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<string>('');
-  const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
 
-  
+  const [mainSection, setMainSection] = useState<'dashboard' | 'analyse' | 'contracts' | 'default'>('dashboard');
 
-  // Fetch contracts from database
-  const fetchContracts = async () => {
-    setIsLoadingContracts(true);
-    contractController.fetch('default').then(items => {
-      if (items) {
-        setContracts(items);
-      }
-    }).catch(error => {
-      console.error('Failed to fetch contracts:', error);
-    }).finally(() => {
-      setIsLoadingContracts(false);
-    });
-  };
+ 
 
   // Fetch recent analyses from database
   const fetchRecentAnalysis = async () => {
@@ -54,7 +42,6 @@ export default function Home() {
 
   // Load contracts and analyses on component mount
   useEffect(() => {
-    fetchContracts();
     fetchRecentAnalysis();
   }, []);
 
@@ -66,7 +53,52 @@ export default function Home() {
 
   
 
+  const handleDashboardAction = (cta: { action: string; data: any }) => {
+    const section = cta.data.section;
+    switch (section) {
+      case 'contract_section':
+        setMainSection('contracts');
+        break;
+      case 'analyse_section':
+        setMainSection('analyse');
+        break;
+      default:
+        console.log('Unknown action:', cta.action);
+    }
+  };
 
+
+  const mainContent = () => {
+    switch (mainSection) {
+      case 'analyse':
+        return <AnalyseSection 
+                onAnalysisComplete={(analysis) => {
+                  setAnalysisResults(analysis);
+                }}
+              />;
+      case 'contracts':
+        return <ContractsSection onContractSelect={(contract) => {
+          console.log('Contract selected:', contract);
+        }} />;
+      default:
+        return <DashboardSection
+              // Contracts
+              isLoadingContracts={isLoadingContracts}
+              getRiskLevel={getRiskLevel}
+              
+              // Recent Analyses
+              recentAnalyses={recentAnalyses}
+              isLoadingAnalyses={isLoadingAnalyses}
+              fetchRecentAnalysis={fetchRecentAnalysis}
+              
+              onAnalysisComplete={(analysis) => {
+                console.log('Analysis complete:', analysis);
+                setAnalysisResults(analysis);
+              }}
+              onDashboardAction={handleDashboardAction}
+            />;
+    }
+  };
 
   return (
     <ErrorBoundary>
@@ -88,33 +120,8 @@ export default function Home() {
 
         {/* Main Content */}
         <main className="pt-20 h-screen flex">
-          <div>
-            <div className="px-6">
-              <AnalyseSection 
-                onAnalysisComplete={(analysis) => {
-                  setAnalysisResults(analysis);
-                }}
-              />
-            </div>
-
-            <DashboardSection
-              // Contracts
-              contracts={contracts}
-              isLoadingContracts={isLoadingContracts}
-              fetchContracts={fetchContracts}
-              getRiskLevel={getRiskLevel}
-              
-              // Recent Analyses
-              recentAnalyses={recentAnalyses}
-              isLoadingAnalyses={isLoadingAnalyses}
-              fetchRecentAnalysis={fetchRecentAnalysis}
-              
-              onAnalysisComplete={(analysis) => {
-                console.log('Analysis complete:', analysis);
-                setAnalysisResults(analysis);
-              }}
-            />
-            
+          <div className="flex-1 px-6">
+            {mainContent()}
           </div>
           <ChatSection 
             analysisResults={analysisResults}

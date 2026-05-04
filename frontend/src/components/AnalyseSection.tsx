@@ -163,6 +163,10 @@ export default function AnalyseSection({ onAnalysisComplete }: {
         return <UploadedFileSection 
             ref={el => fileRefs.current[file.id] = el}
             fileToUpload={file} 
+            onStatusChange={(file) => {
+                console.log('File status changed:', file);
+                setUploadedFiles(prev => prev.map(f => f.id === file.id ? file : f));
+            }}
             onAnalysisComplete={(analysis) => {
                 setAnalysisResults(analysis);
             }} 
@@ -223,7 +227,7 @@ export default function AnalyseSection({ onAnalysisComplete }: {
                         <div className="flex-1">
                             {uploadedFile(file)}
                         </div>
-                        {file.uploadStatus !== 'processing' && file.uploadStatus !== 'uploading' && (
+                        {file.uploadStatus === 'pending' && (
                             <button
                                 onClick={() => removeFile(file.id)}
                                 className="p-1 hover:bg-gray-200 rounded transition-colors"

@@ -26,7 +26,7 @@ interface UploadedFile {
   analysisId?: string;
   uploadProgress?: number;
   errorMessage?: string;
-  processingPercentage?: number;
+  processingProgress?: number = 0;
 }
 
 interface Clause {

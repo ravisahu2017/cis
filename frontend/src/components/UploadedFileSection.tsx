@@ -70,6 +70,8 @@ export default function UploadedFileSection({
         if(!file) {
             return 'Ready';
         }
+
+
         switch (file.uploadStatus) {
             case 'pending':
                 return 'Ready to analyze';
@@ -89,7 +91,7 @@ export default function UploadedFileSection({
     };
 
     const pollAnalysisStatus = async (fileId: string, analysisId: string) => {
-        const maxAttempts = 60; // Poll for up to 5 minutes (every 5 seconds)
+        const maxAttempts = 10; // Poll for up to 50 seconds (every 5 seconds)
         let attempts = 0;
 
         const poll = async () => {
@@ -98,25 +100,25 @@ export default function UploadedFileSection({
                 
                 if (status && status.status) {
                     if (status.status === 'queued') {
-                        setFile({...file, uploadStatus: 'queued', processingPercentage: 10});
+                        setFile(prevFile => ({...prevFile, uploadStatus: 'queued', processingProgress: (prevFile.processingProgress || 0) + 1}));
                         attempts++;
                         if (attempts < maxAttempts) {
                             setTimeout(poll, 5000); // Poll every 5 seconds
                         }
                     } else if (status.status === 'processing') {
-                        setFile({...file, uploadStatus: 'processing', processingPercentage: 30});
+                        setFile(prevFile => ({...prevFile, uploadStatus: 'processing', processingProgress: (prevFile.processingProgress || 0) + 2}));
                         attempts++;
                         if (attempts < maxAttempts) {
                             setTimeout(poll, 5000); // Poll every 5 seconds
                         }
                     } else if (status.status === 'completed') {
-                        setFile({...file, uploadStatus: 'completed', processingPercentage: 100});
+                        setFile(prevFile => ({...prevFile, uploadStatus: 'completed', processingProgress: 100}));
                         // Notify parent component
                         if (status.analysis) {
                             onAnalysisComplete(status.analysis);
                         }
                     } else if (status.status === 'failed') {
-                        setFile({...file, uploadStatus: 'failed', errorMessage: status.error || 'Analysis failed', processingPercentage: 0});
+                        setFile(prevFile => ({...prevFile, uploadStatus: 'failed', errorMessage: status.error || 'Analysis failed', processingProgress: 0}));
                     }
                 } else {
                     // Status not available yet, continue polling
@@ -135,7 +137,7 @@ export default function UploadedFileSection({
         };
 
         // Start polling after a short delay
-        setInterval(poll, 2000);
+        setTimeout(poll, 2000);
     };
 
     const analyzeFile = async (file: UploadedFile) => {
@@ -146,7 +148,7 @@ export default function UploadedFileSection({
             setFile(prev => {
                 if (prev.uploadStatus === 'uploading') {
                     const newProgress = Math.min((prev.uploadProgress || 0) + 10, 90);
-                    return { ...prev, uploadProgress: newProgress };
+                    return { ...prev, uploadProgress: newProgress, processingProgress: newProgress };
                 }
                 return prev;
             });
@@ -199,26 +201,22 @@ export default function UploadedFileSection({
     }
 
     const fileUploadProgressBar = () => {
-        if(!(file.uploadStatus === 'uploading' || file.uploadStatus === 'processing')) {
-            return null;
-        }
+        
         return (<>
             <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-gray-700">
                     {getStatusText()}
                 </span>
-                {file.uploadProgress !== undefined && file.uploadProgress > 0 && (
+                {file.processingProgress !== undefined && file.processingProgress > 0 && (
                     <span className="text-xs text-gray-500">
-                        {file.uploadProgress}%
+                        {file.processingProgress}%
                     </span>
                 )}
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div className="w-full bg-gray-200 rounded-full h-1.5" title={`${file.processingProgress || 0}%`}>
                 <div 
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                        file.uploadStatus === 'uploading' ? 'bg-blue-500' : 'bg-orange-500'
-                    }`}
-                    style={{ width: `${file.uploadProgress || 0}%` }}
+                    className="h-1.5 rounded-full transition-all duration-300 bg-blue-500"
+                    style={{ width: `${file.processingProgress || 0}%` }}
                 ></div>
             </div>
         </>)
@@ -264,6 +262,8 @@ export default function UploadedFileSection({
                     </div>
                 </div>
                 
+                {fileUploadProgressBar()}
+                
                 {/* Status and Progress */}
                 <div className="mt-2">
                     {/* Error Message */}
@@ -277,7 +277,57 @@ export default function UploadedFileSection({
         );
     }
 
+
+    const uploadFileV2 = (file) => {
+        if(!file) return null;
+        return (
+            <div className="w-full bg-gray-50 rounded-lg overflow-hidden relative" title={`${file.processingProgress || 0}%`}>
+                {/* Progress Background */}
+                <div 
+                    className="absolute inset-0 bg-blue-100 transition-all duration-3000"
+                    style={{ width: `${file.processingProgress || 0}%` }}
+                />
+                
+                {/* Content */}
+                <div className="relative z-10 p-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getStatusColor()}`}>
+                                {getStatusIcon()}
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                <p className="text-xs text-gray-500">
+                                    {formatFileSize(file.size)} • {file.uploadedAt}
+                                </p>
+                            </div>
+                        </div>
+                    
+                        {/* Action Buttons */}
+                        <div className="flex items-center space-x-2">
+                            {file.uploadStatus === 'pending' && (
+                                <button
+                                    onClick={() => analyzeFile(file)}
+                                    className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors flex items-center"
+                                >
+                                    <Upload className="w-3 h-3 mr-1" />
+                                    Analyze
+                                </button>
+                            )}
+                        </div>
+
+                        {file.uploadStatus != "pending" && (
+                            <div className="text-xs text-gray-500 capitalize">
+                                {file.uploadStatus}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        uploadedFile(file)
+        uploadFileV2(file)
     );
 }

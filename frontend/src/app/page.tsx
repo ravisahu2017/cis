@@ -12,7 +12,8 @@ import { DashboardTile, ChatMessage, UploadedFile, AnalysisData, Contract, Contr
 import { getDummyDashboardTiles } from '@/models/dummy';
 import { getTilesFromAnalysis , getAnalysisChatMsg } from '@/models/dataFiller';
 import AnalyseSection from '@/components/AnalyseSection';
-import ContractsSection from '@/components/ContractsSection';
+import ContractListSection from '@/components/ContractListSection';
+import ContractSection from '@/components/ContractSection';
 
 export default function Home() {
   
@@ -22,7 +23,8 @@ export default function Home() {
   const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(false);
 
-  const [mainSection, setMainSection] = useState<'dashboard' | 'analyse' | 'contracts' | 'default'>('dashboard');
+  const [mainSection, setMainSection] = useState<'dashboard' | 'analyse' | 'contract' | 'contract-list' | 'default'>('dashboard');
+  const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
 
  
 
@@ -57,7 +59,7 @@ export default function Home() {
     const section = cta.data.section;
     switch (section) {
       case 'contract_section':
-        setMainSection('contracts');
+        setMainSection('contract-list');
         break;
       case 'analyse_section':
         setMainSection('analyse');
@@ -65,6 +67,16 @@ export default function Home() {
       default:
         console.log('Unknown action:', cta.action);
     }
+  };
+
+  const handleContractSelect = (contractId: string) => {
+    setSelectedContractId(contractId);
+    setMainSection('contract');
+  };
+
+  const handleBackToContracts = () => {
+    setSelectedContractId(null);
+    setMainSection('contract-list');
   };
 
 
@@ -76,10 +88,15 @@ export default function Home() {
                   setAnalysisResults(analysis);
                 }}
               />;
-      case 'contracts':
-        return <ContractsSection onContractSelect={(contract) => {
-          console.log('Contract selected:', contract);
-        }} />;
+      case 'contract-list':
+        return <ContractListSection onContractSelect={handleContractSelect} />;
+      case 'contract':
+        return selectedContractId ? (
+          <ContractSection 
+            contractId={selectedContractId} 
+            onBack={handleBackToContracts} 
+          />
+        ) : null;
       default:
         return <DashboardSection
               // Contracts

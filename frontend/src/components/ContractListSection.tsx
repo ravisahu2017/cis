@@ -8,11 +8,11 @@ import {
 import { Contract } from '@/models/models';
 import contractController from '@/controllers/contract';
 
-interface ContractsSectionProps {
-  onContractSelect?: (contract: Contract) => void;
+interface ContractListSectionProps {
+  onContractSelect?: (contractId: string) => void;
 }
 
-export default function ContractsSection({ onContractSelect }: ContractsSectionProps) {
+export default function ContractListSection({ onContractSelect }: ContractListSectionProps) {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,8 +66,8 @@ export default function ContractsSection({ onContractSelect }: ContractsSectionP
     });
 
   const handleContractClick = (contract: Contract) => {
-    if (onContractSelect) {
-      onContractSelect(contract);
+    if (onContractSelect && contract.id) {
+      onContractSelect(contract.id);
     }
   };
 

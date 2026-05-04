@@ -20,6 +20,19 @@ export default class ContractController {
         }
     }
 
+    static async fetchContract(userId: string = 'default', contract_id: string): Promise<Contract> {
+        try {
+            const response = await backendApi.get(`/contract/contracts/${contract_id}`);
+            if (response.success && response.data) {
+                return response.data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to fetch contracts:', error);
+            return null;
+        }
+    }
+
     static async analyse(analysis_types: string[], file: File): Promise<any> {
         try {
             const formData = new FormData();

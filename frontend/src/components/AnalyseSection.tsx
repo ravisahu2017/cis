@@ -1,6 +1,6 @@
 
 import { motion } from 'framer-motion';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Upload, X, File, Loader2, FileText, TrendingUp, CheckCircle, AlertCircle, Clock 
 } from 'lucide-react';
@@ -17,6 +17,9 @@ export default function AnalyseSection({ onAnalysisComplete }: {
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
+    
+    // Create refs for each file section to call analyze method
+    const fileRefs = useRef<{ [key: string]: any }>({});
     const [isClausesCollapsed, setIsClausesCollapsed] = useState(true);
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
     const [isChatStreaming, setIsChatStreaming] = useState(false);
@@ -126,14 +129,20 @@ export default function AnalyseSection({ onAnalysisComplete }: {
     };
 
     const analyzeContracts = async () => {
-        // This function is now handled automatically by uploadFile
-        // Files are uploaded and analyzed as soon as they are added
-        console.log('Files are automatically uploaded and analyzed upon selection');
+        // Call analyze on each UploadedFileSection
+        uploadedFiles.forEach(file => {
+            const fileRef = fileRefs.current[file.id];
+            if (fileRef && fileRef.analyzeFile) {
+                fileRef.analyzeFile();
+            }
+        });
     };
 
     const clearAllFiles = () => {
         setUploadedFiles([]);
         setAnalysisResults(null);
+        // Clear all file refs
+        fileRefs.current = {};
     };
 
     
@@ -151,9 +160,13 @@ export default function AnalyseSection({ onAnalysisComplete }: {
     };
 
     const uploadedFile = (file: any) => {
-        return <UploadedFileSection fileToUpload={file} onAnalysisComplete={(analysis) => {
-            setAnalysisResults(analysis);
-        }} />;
+        return <UploadedFileSection 
+            ref={el => fileRefs.current[file.id] = el}
+            fileToUpload={file} 
+            onAnalysisComplete={(analysis) => {
+                setAnalysisResults(analysis);
+            }} 
+        />;
     }
  
     return (
@@ -223,11 +236,14 @@ export default function AnalyseSection({ onAnalysisComplete }: {
                 </div>
                 {uploadedFiles.length > 0 && (
                   <div className="mt-4 flex space-x-3">
-                    <div className="flex-1 text-center">
-                      <p className="text-xs text-gray-500">
-                        Files are automatically uploaded and analyzed
-                      </p>
-                    </div>
+                    
+                    <button
+                      onClick={analyzeContracts}
+                      className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-sm flex items-center"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Analyze All
+                    </button>
                     <button
                       onClick={clearAllFiles}
                       className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"

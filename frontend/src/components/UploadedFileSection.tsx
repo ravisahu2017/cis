@@ -1,18 +1,25 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import contractController from '@/controllers/contract'
 import { 
   Upload, X, File, Loader2, FileText, TrendingUp, CheckCircle, AlertCircle, Clock 
 } from 'lucide-react';
 import { UploadedFile } from '@/types/contract';
 
-export default function UploadedFileSection({ 
-    onAnalysisComplete, 
-    fileToUpload }: { 
+export interface UploadedFileSectionRef {
+    analyzeFile: () => void;
+}
+
+export default forwardRef<UploadedFileSectionRef, { 
     onAnalysisComplete: (analysis: any) => void 
     fileToUpload: UploadedFile
-}) {
+}>(({ onAnalysisComplete, fileToUpload }, ref) => {
     const [file, setFile] = useState<UploadedFile>(fileToUpload);
+
+    // Expose analyzeFile function to parent via ref
+    useImperativeHandle(ref, () => ({
+        analyzeFile: () => analyzeFile(file)
+    }));
 
     const formatFileSize = (bytes: number) => {
         if (bytes === 0) return '0 Bytes';
@@ -91,7 +98,7 @@ export default function UploadedFileSection({
     };
 
     const pollAnalysisStatus = async (fileId: string, analysisId: string) => {
-        const maxAttempts = 10; // Poll for up to 50 seconds (every 5 seconds)
+        const maxAttempts = 75; // Poll for up to 50 seconds (every 5 seconds)
         let attempts = 0;
 
         const poll = async () => {
@@ -103,13 +110,13 @@ export default function UploadedFileSection({
                         setFile(prevFile => ({...prevFile, uploadStatus: 'queued', processingProgress: (prevFile.processingProgress || 0) + 1}));
                         attempts++;
                         if (attempts < maxAttempts) {
-                            setTimeout(poll, 5000); // Poll every 5 seconds
+                            setTimeout(poll, 10000); // Poll every 5 seconds
                         }
                     } else if (status.status === 'processing') {
                         setFile(prevFile => ({...prevFile, uploadStatus: 'processing', processingProgress: (prevFile.processingProgress || 0) + 2}));
                         attempts++;
                         if (attempts < maxAttempts) {
-                            setTimeout(poll, 5000); // Poll every 5 seconds
+                            setTimeout(poll, 4000); // Poll every 5 seconds
                         }
                     } else if (status.status === 'completed') {
                         setFile(prevFile => ({...prevFile, uploadStatus: 'completed', processingProgress: 100}));
@@ -330,4 +337,4 @@ export default function UploadedFileSection({
     return (
         uploadFileV2(file)
     );
-}
+});

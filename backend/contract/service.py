@@ -80,13 +80,8 @@ class ContractService:
             self.analysis_queue.append(queue_item)
             logger.info(f"Analysis {analysis_id} queued (position: {len(self.analysis_queue)})")
 
-            # Start analysis
-            self._run_analysis_async(
-                analysis_id, 
-                queue_item['text_content'], 
-                queue_item['analysis_types'], 
-                queue_item['request']
-            )
+            # Try to process queue
+            self._process_queue()
 
             return HttpBaseResponse(
                 success=True,

@@ -310,7 +310,7 @@ class ApiService {
 
 
 // For specific backend servers
-const backendUrl = 'http://localhost:8001';
+const backendUrl = 'https://unhappy-edgy-challenge.ngrok-free.dev';
 export const backendApi = new ApiService(backendUrl);
 
 

@@ -13,7 +13,7 @@ from .json_utils import (
 )
 from .logger import logger
 from .file_util import read_pdf, read_docx, read_txt, read_image
-from .common_model import HttpBaseResponse
+from .common_model import HttpBaseResponse, QueuedResponse
 
 __all__ = [
     # Text utilities
@@ -39,6 +39,7 @@ __all__ = [
 
     # Common models
     'HttpBaseResponse',
+    'QueuedResponse',
 
     # Logger
     'logger'

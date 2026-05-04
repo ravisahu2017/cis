@@ -16,3 +16,9 @@ class PaginationResponse(BaseModel):
     offset: int = Field(description="Current offset")
     has_more: bool = Field(description="Whether there are more items")
     items: List[Any] = Field(description="List of items")
+
+class QueuedResponse(BaseModel):
+    analysis_id: str = Field(description="Analysis ID")
+    status: str = Field(description="Analysis status")
+    message: str = Field(description="Analysis message")
+    estimated_wait_time: int = Field(description="Estimated wait time")

@@ -120,3 +120,14 @@ class AnalysisSession(BaseModel):
     total_processing_time_ms: int = Field(default=0)
     contract_types_analyzed: List[ContractType] = Field(default_factory=list)
     status: str = Field(default="active", description="Session status")
+    current_analysis_id: Optional[str] = Field(default=None, description="Current analysis ID")
+    progress: int = Field(default=0, description="Analysis progress (0-100)")
+    message: str = Field(default="Ready", description="Current status message")
+    result: Optional[ContractAnalysis] = Field(default=None, description="Analysis result when completed")
+
+class AnalysisStatus(str, Enum):
+    """Analysis processing status"""
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"

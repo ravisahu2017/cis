@@ -5,17 +5,19 @@ Orchestrates contract analysis functionality and provides API interface
 
 import uuid
 import time
+import asyncio
+import threading
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from enum import Enum
 from .models import (
     ContractRequest, ContractResponse, ContractAnalysis, ContractCapabilities, 
-    ContractAnalytics, AnalysisSession, AnalysisType, ContractType
+    ContractAnalytics, AnalysisSession, AnalysisType, ContractType, AnalysisStatus
 )
 from .contract_utils import ContractUtils
-
 from .crew import contract_crew_manager
 from .agents import get_agent_capabilities
-from utils import logger, read_pdf, read_docx, read_txt, read_image, HttpBaseResponse
+from utils import logger, read_pdf, read_docx, read_txt, read_image, HttpBaseResponse, QueuedResponse
 from storage.repository import ContractRepository, AnalysisRepository
 from storage.database import get_database
 
@@ -32,148 +34,263 @@ class ContractService:
         self.db = get_database()
         self.contract_repo = ContractRepository()
         self.analysis_repo = AnalysisRepository()
-    
-    def analyze_contract(self, request: ContractRequest) -> ContractResponse:
-        """
-        Analyze a contract and return comprehensive results
         
-        Args:
-            request: ContractRequest with file path/content and analysis options
-            
-        Returns:
-            ContractResponse with analysis results
+        # Start background queue processor
+        self.queue_processor_thread = threading.Thread(target=self._process_queue, daemon=True)
+        self.queue_processor_thread.start()
+    
+    def analyze_contract(self, request: ContractRequest) -> HttpBaseResponse:
+        """
+        Submit contract analysis request and return job ID immediately
         """
         start_time = time.time()
         analysis_id = str(uuid.uuid4())
         
         try:
-            # Get or create session
-            session = self._get_or_create_session(None, request.user_id)
-            
-            # Extract text content
+            # Extract and validate content
             text_content = self._extract_text_content(request)
-            
             if not text_content or len(text_content.strip()) < 100:
-                raise ValueError("Insufficient text content for analysis (minimum 100 characters required)")
+                raise ValueError("Insufficient text content (minimum 100 characters)")
             
-            # Validate analysis types
             analysis_types = self._validate_analysis_types(request.analysis_types)
             
-            # Check concurrent analysis limit
-            if len(self.analysis_queue) >= self.max_concurrent_analyses:
-                raise Exception("Analysis queue is full. Please try again later.")
+            # Create session (this is our job tracker)
+            session = AnalysisSession(
+                session_id=analysis_id,  # Use analysis_id as session_id
+                user_id=request.user_id or "default",
+                created_at=datetime.now(),
+                last_activity=datetime.now(),
+                analyses_completed=0,
+                total_processing_time_ms=0,
+                contract_types_analyzed=[],
+                status=AnalysisStatus.QUEUED,
+                current_analysis_id=analysis_id,
+                progress=0,
+                message="Analysis queued for processing"
+            )
             
             # Add to queue
             queue_item = {
                 'analysis_id': analysis_id,
                 'request': request,
                 'text_content': text_content,
-                'session_id': session.session_id,
-                'started_at': time.time()
+                'analysis_types': analysis_types,
+                'session': session
             }
             self.analysis_queue.append(queue_item)
-            
-            logger.info(f"Starting contract analysis {analysis_id} for session {session.session_id}")
-            
-            # Process analysis
-            # Use mock data for testing (remove LLM calls)
-            # from contract.mock_data import get_mock_analysis
-            
-            # analysis = get_mock_analysis(text_content, analysis_id, analysis_types)
-            
-            # Uncomment this line to enable real LLM calls:
-            analysis = contract_crew_manager.analyze_contract(text_content, analysis_types, analysis_id)
-            
-            # Extract agents used from analysis types
-            agents_used = [agent_type.value for agent_type in analysis_types]
-            
-            # Save analysis results to database
-            try:
-                # Create or get contract record
-                contract = self._get_or_create_contract(request, text_content)
-                
-                # Create version record
-                version = self.contract_repo.create_version(
-                    contract_id=contract.id,
-                    filename=request.file_path.split('/')[-1] if request.file_path else "text_input",
-                    file_path=request.file_path or "",
-                    file_content=text_content,
-                    effective_date=analysis.metadata.effective_date if analysis.metadata else None,
-                    expiry_date=analysis.metadata.expiration_date if analysis.metadata else None,
-                    governing_law=analysis.metadata.governing_law if analysis.metadata else None,
-                    total_value=analysis.metadata.total_value if analysis.metadata else None,
-                    currency=analysis.metadata.currency if analysis.metadata else None,
-                    metadata_json=analysis.metadata.dict() if analysis.metadata else {}
-                )
-                
-                # Save analysis results
-                for analysis_type in analysis_types:
-                    self.analysis_repo.create_analysis(
-                        version_id=version.id,
-                        analysis_type=analysis_type.value,
-                        analysis_result=analysis,
-                        processing_time_ms=analysis.processing_time_ms,
-                        agents_used=agents_used
-                    )
-                
-                logger.info(f"Saved analysis to database: contract={contract.id}, version={version.id}")
-                
-            except Exception as e:
-                logger.error(f"Failed to save analysis to database: {str(e)}")
-                # Continue with response even if storage fails
-            
-            # Update session
-            session.analyses_completed += 1
-            session.total_processing_time_ms += analysis.processing_time_ms or 0
-            if request.contract_type_hint:
-                if request.contract_type_hint not in session.contract_types_analyzed:
-                    session.contract_types_analyzed.append(request.contract_type_hint)
-            session.last_activity = datetime.now()
-            
-            # Remove from queue
-            self.analysis_queue = [item for item in self.analysis_queue if item['analysis_id'] != analysis_id]
-            
-            # Calculate total processing time
-            total_processing_time_ms = int((time.time() - start_time) * 1000)
-            
-            # Determine agents used
-            agents_used = self._get_agents_used(analysis_types)
-            
-            # Create response
-            response = HttpBaseResponse(
-                success=True,
-                message="Contract analysis completed successfully",
-                data=ContractResponse(
-                    analysis=analysis,
-                    analysis_id=analysis_id,
-                    agents_used=agents_used
-                ),
-                response_time_ms=total_processing_time_ms,
+            logger.info(f"Analysis {analysis_id} queued (position: {len(self.analysis_queue)})")
+
+            # Start analysis
+            self._run_analysis_async(
+                analysis_id, 
+                queue_item['text_content'], 
+                queue_item['analysis_types'], 
+                queue_item['request']
             )
 
-            logger.info(f"Contract analysis {analysis_id} completed successfully")
-            return response
+            return HttpBaseResponse(
+                success=True,
+                message="Contract analysis submitted successfully",
+                data=QueuedResponse(
+                    analysis_id=analysis_id,
+                    status=session.status,
+                    message=session.message,
+                    estimated_wait_time=len(self.analysis_queue) * 20
+                ),
+                response_time_ms=int((time.time() - start_time) * 1000)
+            )
             
         except Exception as e:
-            # Remove from queue if error
-            self.analysis_queue = [item for item in self.analysis_queue if item['analysis_id'] != analysis_id]
-            
-            logger.error(f"Error in contract analysis: {str(e)}")
-            
-            # Calculate processing time even for errors
-            total_processing_time_ms = int((time.time() - start_time) * 1000)
-            
+            logger.error(f"Error submitting analysis: {str(e)}")
             return HttpBaseResponse(
                 success=False,
-                message="Contract analysis failed",
+                message="Failed to submit analysis",
                 error=str(e),
-                data=ContractResponse(
-                    success=False,
-                    analysis_id=analysis_id,
-                    agents_used=[]
-                ),
-                response_time_ms=total_processing_time_ms,
+                data={'analysis_id': analysis_id}
             )
+    
+    def get_analysis_status(self, analysis_id: str) -> HttpBaseResponse:
+        """Get analysis status using active_sessions"""
+        try:
+            # Check if analysis is in queue
+            queue_position = None
+            for i, item in enumerate(self.analysis_queue):
+                if item['analysis_id'] == analysis_id:
+                    queue_position = i + 1
+                    break
+            
+            if queue_position is not None:
+                # Still in queue
+                return HttpBaseResponse(
+                    success=True,
+                    message="Analysis status retrieved",
+                    data={
+                        'analysis_id': analysis_id,
+                        'status': AnalysisStatus.QUEUED,
+                        'progress': 0,
+                        'message': 'Queued for processing',
+                        'queue_position': queue_position
+                    }
+                )
+            
+            # Check if analysis is active or completed
+            session = self.active_sessions.get(analysis_id)
+            if not session:
+                return HttpBaseResponse(
+                    success=False,
+                    message="Analysis not found",
+                    error=f"Analysis ID {analysis_id} not found"
+                )
+            
+            # Calculate progress
+            progress = session.progress
+            if session.status == AnalysisStatus.PROCESSING and session.current_analysis_id:
+                # Estimate progress based on time
+                elapsed = (datetime.now() - session.last_activity).total_seconds()
+                progress = min(95, int((elapsed / 20) * 100))
+            
+            response_data = {
+                'analysis_id': analysis_id,
+                'status': session.status,
+                'progress': progress,
+                'message': session.message,
+                'created_at': session.created_at.timestamp(),
+                'queue_position': None
+            }
+            
+            # Add result if completed
+            if hasattr(session, 'result') and session.result:
+                response_data['result'] = session.result
+            
+            return HttpBaseResponse(
+                success=True,
+                message="Analysis status retrieved",
+                data=response_data
+            )
+            
+        except Exception as e:
+            logger.error(f"Error getting status: {str(e)}")
+            return HttpBaseResponse(
+                success=False,
+                message="Failed to get status",
+                error=str(e)
+            )
+    
+    def _run_analysis_async(self, analysis_id: str, text_content: str, analysis_types: List[AnalysisType], request: ContractRequest):
+        """Run analysis in background thread"""
+        def analysis_worker():
+            session = self.active_sessions.get(analysis_id)
+            if not session:
+                return
+            
+            try:
+                # Update status
+                session.status = AnalysisStatus.PROCESSING
+                session.message = "Processing analysis..."
+                session.progress = 10
+                session.last_activity = datetime.now()
+                
+                logger.info(f"Starting analysis {analysis_id}")
+                
+                # Perform analysis
+                from contract.mock_data import get_mock_analysis
+                analysis = get_mock_analysis(text_content, analysis_id, analysis_types)
+                
+                # Simulate processing time with progress updates
+                for i in range(20):
+                    time.sleep(1)
+                    session.progress = min(90, 10 + i * 4)
+                    session.last_activity = datetime.now()
+                    if i == 10:
+                        session.message = "Analyzing contract clauses..."
+                    elif i == 15:
+                        session.message = "Generating recommendations..."
+                
+                # Save result
+                session.status = AnalysisStatus.COMPLETED
+                session.message = "Analysis completed successfully"
+                session.progress = 100
+                session.result = analysis
+                session.last_activity = datetime.now()
+                
+                logger.info(f"Analysis {analysis_id} completed")
+                
+            except Exception as e:
+                logger.error(f"Analysis {analysis_id} failed: {str(e)}")
+                session.status = AnalysisStatus.FAILED
+                session.message = f"Analysis failed: {str(e)}"
+                session.last_activity = datetime.now()
+            
+            finally:
+                # Remove from active sessions after some time
+                threading.Timer(300, lambda: self.active_sessions.pop(analysis_id, None)).start()
+                
+                # Process next item in queue
+                self._process_queue()
+        
+        # Start worker thread
+        thread = threading.Thread(target=analysis_worker, daemon=True)
+        thread.start()
+    
+    def _process_queue(self):
+        """Process next item in queue if slots available"""
+        while (self.analysis_queue and 
+               len(self.active_sessions) < self.max_concurrent_analyses):
+            
+            # Get next item
+            queue_item = self.analysis_queue.pop(0)
+            analysis_id = queue_item['analysis_id']
+            
+            # Move to active sessions
+            session = queue_item['session']
+            self.active_sessions[analysis_id] = session
+            
+            # Start analysis
+            self._run_analysis_async(
+                analysis_id, 
+                queue_item['text_content'], 
+                queue_item['analysis_types'], 
+                queue_item['request']
+            )
+            
+            logger.info(f"Started queued analysis {analysis_id}")
+    
+    def _save_analysis_result(self, job_info: Dict, analysis: ContractAnalysis) -> None:
+        """Save analysis result to database"""
+        try:
+            # Create contract and version
+            contract = self.contract_repo.create_contract(
+                contract_name=analysis.contract_name,
+                user_id=job_info['request'].user_id or "default",
+                contract_type=analysis.metadata.contract_type.value if analysis.metadata.contract_type else None,
+                parties=str(analysis.metadata.parties) if analysis.metadata.parties else None,
+                description="Contract analyzed via API"
+            )
+            
+            # Create version
+            version = self.contract_repo.create_version(
+                contract_id=contract.id,
+                file_content=job_info['text_content'],
+                version_name="v1.0",
+                change_summary="Initial analysis"
+            )
+            
+            # Save analyses
+            agents_used = [agent_type.value for agent_type in job_info['analysis_types']]
+            for analysis_type in job_info['analysis_types']:
+                self.analysis_repo.create_analysis(
+                    version_id=version.id,
+                    analysis_type=analysis_type.value,
+                    analysis_result=analysis,
+                    processing_time_ms=analysis.processing_time_ms,
+                    agents_used=agents_used
+                )
+            
+            logger.info(f"Saved analysis to database: contract={contract.id}, version={version.id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to save analysis to database: {str(e)}")
+            raise
     
     def _extract_text_content(self, request: ContractRequest) -> str:
         """Extract text content from file path or direct content"""

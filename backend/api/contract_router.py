@@ -157,6 +157,24 @@ async def contract_capabilities() -> Dict[str, Any]:
         logger.error(f"Contract capabilities error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get capabilities")
 
+@contract_router.get("/analysis/{analysis_id}/status", response_model=HttpBaseResponse)
+async def get_analysis_status(analysis_id: str) -> HttpBaseResponse:
+    """
+    Get the status and progress of an analysis job
+    
+    Args:
+        analysis_id: The analysis job ID returned by analyze endpoints
+        
+    Returns:
+        Current status, progress percentage, and queue position
+    """
+    try:
+        response = contract_service.get_analysis_status(analysis_id)
+        return response
+    except Exception as e:
+        logger.error(f"Analysis status error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get analysis status: {str(e)}")
+
 @contract_router.get("/agents")
 async def contract_agents() -> Dict[str, Any]:
     """

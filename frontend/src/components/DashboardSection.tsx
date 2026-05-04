@@ -28,7 +28,7 @@ interface DashboardSectionProps {
   // Recent Analyses
   recentAnalyses: RecentAnalysis[];
   isLoadingAnalyses: boolean;
-  fetchRecentAnalyses: () => void;
+  fetchRecentAnalysis: () => void;
 }
 
 export default function DashboardSection({
@@ -38,7 +38,7 @@ export default function DashboardSection({
   getRiskLevel,
   recentAnalyses,
   isLoadingAnalyses,
-  fetchRecentAnalyses
+  fetchRecentAnalysis
 }: DashboardSectionProps) {
 
   // Generate dynamic dashboard tiles based on analysis results
@@ -193,7 +193,7 @@ export default function DashboardSection({
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-light">Recent Analyses</h2>
             <button
-              onClick={fetchRecentAnalyses}
+              onClick={fetchRecentAnalysis}
               disabled={isLoadingAnalyses}
               className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >

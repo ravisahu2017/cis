@@ -39,9 +39,9 @@ export default function Home() {
   };
 
   // Fetch recent analyses from database
-  const fetchRecentAnalyses = async () => {
+  const fetchRecentAnalysis = async () => {
     setIsLoadingAnalyses(true);
-    contractController.fetchRecentAnalyses('default', 12, 3).then(items => {
+    contractController.fetchRecentAnalysis('default', 12, 3).then(items => {
       if (items) {
         setRecentAnalyses(items);
       }
@@ -55,7 +55,7 @@ export default function Home() {
   // Load contracts and analyses on component mount
   useEffect(() => {
     fetchContracts();
-    fetchRecentAnalyses();
+    fetchRecentAnalysis();
   }, []);
 
   const getRiskLevel = (score: number): string => {
@@ -89,7 +89,7 @@ export default function Home() {
         {/* Main Content */}
         <main className="pt-20 h-screen flex">
           <div>
-            <div className="p-6 pb-0">
+            <div className="px-6">
               <AnalyseSection 
                 onAnalysisComplete={(analysis) => {
                   setAnalysisResults(analysis);
@@ -107,7 +107,7 @@ export default function Home() {
               // Recent Analyses
               recentAnalyses={recentAnalyses}
               isLoadingAnalyses={isLoadingAnalyses}
-              fetchRecentAnalyses={fetchRecentAnalyses}
+              fetchRecentAnalysis={fetchRecentAnalysis}
               
               onAnalysisComplete={(analysis) => {
                 console.log('Analysis complete:', analysis);

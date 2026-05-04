@@ -139,6 +139,33 @@ export default function AnalyseSection({ onAnalysisComplete }: {
         });
     };
 
+    const uploadedFile = (file: any) => {
+        return (<motion.div
+            key={file.id}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+        >
+            <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <File className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                    <p className="text-sm font-medium">{file.name}</p>
+                    <p className="text-xs text-gray-500">
+                    {formatFileSize(file.size)} • {file.uploadedAt}
+                    </p>
+                </div>
+            </div>
+            <button
+                onClick={() => removeFile(file.id)}
+                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                >
+                <X className="w-4 h-4 text-gray-500" />
+            </button>
+        </motion.div>)
+    }
+ 
     return (
         <div className="mt-8 mb-8">
           <h2 className="text-xl font-light mb-4">Upload Contracts</h2>
@@ -189,30 +216,7 @@ export default function AnalyseSection({ onAnalysisComplete }: {
                 <h4 className="font-medium mb-4">Uploaded Files ({uploadedFiles.length})</h4>
                 <div className="space-y-3">
                   {uploadedFiles.map((file) => (
-                    <motion.div
-                      key={file.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <File className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{file.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {formatFileSize(file.size)} • {file.uploadedAt}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => removeFile(file.id)}
-                        className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      >
-                        <X className="w-4 h-4 text-gray-500" />
-                      </button>
-                    </motion.div>
+                    uploadedFile(file)
                   ))}
                 </div>
                 {uploadedFiles.length > 0 && (
@@ -228,7 +232,7 @@ export default function AnalyseSection({ onAnalysisComplete }: {
                           Analyzing...
                         </>
                       ) : (
-                        'Analyze Contracts'
+                        'Analyze All Contracts'
                       )}
                     </button>
                     <button

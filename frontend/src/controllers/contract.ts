@@ -20,7 +20,20 @@ export default class ContractController {
         }
     }
 
-    static async fetchRecentAnalyses(userId: string = 'default', hours: number = 12, limit: number = 2): Promise<RecentAnalysis[]> {
+    static async fetchAnalysisStatus(userId: string = 'default', analysisId: string): Promise<any> {
+        try {
+            const response = await backendApi.get(`/contract/analysis/${analysisId}/status`);
+            if (response.success && response.data) {
+                return response.data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to fetch contracts:', error);
+            return null;
+        }
+    }
+
+    static async fetchRecentAnalysis(userId: string = 'default', hours: number = 12, limit: number = 2): Promise<RecentAnalysis[]> {
         try {
             const params = new URLSearchParams({
                 user_id: userId,

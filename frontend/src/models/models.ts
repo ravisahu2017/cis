@@ -6,6 +6,7 @@ interface DashboardTile {
   icon: React.ReactNode;
   color: string;
   trend?: string;
+  onClick?: string;
 }
 
 interface ChatMessage {
@@ -21,12 +22,12 @@ interface UploadedFile {
   size: number;
   type: string;
   uploadedAt: string;
-  file: File; // Store actual File object for API upload
-  uploadStatus?: 'pending' | 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed';
+  file: File; 
+  uploadStatus: 'pending' | 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed';
   analysisId?: string;
   uploadProgress?: number;
   errorMessage?: string;
-  processingProgress?: number = 0;
+  processingProgress?: number;
 }
 
 interface Clause {
@@ -40,7 +41,6 @@ interface Clause {
 
 interface ContractMetadata {
   contract_type: string;
-  effective_date: string;
   effective_date: string;
   currency: string;
   governing_law: string;
@@ -122,3 +122,6 @@ interface AnalysisData {
   executive_summary: string;
   processing_time_ms: number;
 }
+
+// Export all interfaces
+export type { DashboardTile, ChatMessage, UploadedFile, Contract, ContractVersion, PaginatedResponse, RecentAnalysis, Clause, AnalysisData, ContractMetadata };

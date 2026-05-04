@@ -8,7 +8,7 @@ import { AlertTriangle, Clock, Users, Settings } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ChatSection from '@/components/ChatSection';
 import DashboardSection from '@/components/DashboardSection';
-import { DashboardTile, ChatMessage, UploadedFile, AnalysisData, Contract, ContractsResponse, RecentAnalysis } from '@/models/models';
+import { DashboardTile, ChatMessage, UploadedFile, AnalysisData, Contract, RecentAnalysis } from '@/models/models';
 import { getDummyDashboardTiles } from '@/models/dummy';
 import { getTilesFromAnalysis , getAnalysisChatMsg } from '@/models/dataFiller';
 import AnalyseSection from '@/components/AnalyseSection';

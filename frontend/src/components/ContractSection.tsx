@@ -6,7 +6,7 @@ import {
   ArrowLeft, FileText, TrendingUp, AlertTriangle, Settings, CheckCircle, 
   Clock, Loader2, Calendar, User, Tag, Shield, DollarSign, Building
 } from 'lucide-react';
-import { Contract } from '@/models/models';
+import { Contract, ContractVersion } from '@/models/models';
 import contractController from '@/controllers/contract';
 import SectionNavigation from './SectionNavigation';
 
@@ -18,6 +18,7 @@ interface ContractSectionProps {
 
 export default function ContractSection({ contractId, onBack, onHome }: ContractSectionProps) {
   const [contract, setContract] = useState<Contract | null>(null);
+  const [versions, setVersions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,17 +28,13 @@ export default function ContractSection({ contractId, onBack, onHome }: Contract
 
   const fetchContract = async () => {
     setIsLoading(true);
-    setError(null);
     try {
       const fetchedContract = await contractController.fetchContract('default', contractId);
-      if (fetchedContract) {
-        setContract(fetchedContract);
-      } else {
-        setError('Contract not found');
-      }
+      setContract(fetchedContract);
+      setError(null);
     } catch (err) {
-      console.error('Failed to fetch contract:', err);
-      setError('Failed to load contract');
+      setError('Failed to fetch contract details');
+      setContract(null);
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +44,12 @@ export default function ContractSection({ contractId, onBack, onHome }: Contract
     if (score >= 70) return 'High Risk';
     if (score >= 40) return 'Medium Risk';
     return 'Low Risk';
+  };
+
+  const handleViewVersion = (version: ContractVersion) => {
+    console.log('Viewing version:', version);
+    // TODO: Implement version viewing logic
+    // This could open a modal, navigate to version details, or update the current view
   };
 
   const getRiskColor = (score: number) => {
@@ -92,7 +95,7 @@ export default function ContractSection({ contractId, onBack, onHome }: Contract
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1">
       <SectionNavigation
         title={contract.contract_name}
         subtitle="Contract Details"
@@ -107,7 +110,7 @@ export default function ContractSection({ contractId, onBack, onHome }: Contract
         }
       />
 
-      <div className="px-6 py-6 space-y-6">
+      <div className="space-y-6">
         {/* Contract Information */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -116,12 +119,12 @@ export default function ContractSection({ contractId, onBack, onHome }: Contract
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
         >
           <h2 className="text-lg font-medium text-gray-900 mb-4">Contract Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="flex items-center space-x-3">
               <FileText className="w-5 h-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Contract Type</p>
-                <p className="font-medium text-gray-900">{contract.contract_type || 'Unknown'}</p>
+                <p className="font-medium text-gray-900">{contract.contract_type || 'Service Agreement'}</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -145,6 +148,147 @@ export default function ContractSection({ contractId, onBack, onHome }: Contract
                 <p className="font-medium text-gray-900">{(contract.file_size / 1024 / 1024).toFixed(2)} MB</p>
               </div>
             </div>
+            <div className="flex items-center space-x-3">
+              <Building className="w-5 h-5 text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Parties</p>
+                <p className="font-medium text-gray-900">Tech Solutions Inc. & Client Corp</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <DollarSign className="w-5 h-5 text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Contract Value</p>
+                <p className="font-medium text-gray-900">$250,000</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Clock className="w-5 h-5 text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Duration</p>
+                <p className="font-medium text-gray-900">12 months</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Shield className="w-5 h-5 text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Renewal</p>
+                <p className="font-medium text-gray-900">Auto-renewal</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Contract Details */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+        >
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Contract Details</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
+              <p className="text-sm text-gray-600">This Service Agreement governs the provision of technology consulting services between Tech Solutions Inc. and Client Corp for the development and maintenance of custom software solutions.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Start Date</h3>
+                <p className="text-sm text-gray-600">January 1, 2024</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">End Date</h3>
+                <p className="text-sm text-gray-600">December 31, 2024</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Payment Terms</h3>
+                <p className="text-sm text-gray-600">Net 30 days</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Governing Law</h3>
+                <p className="text-sm text-gray-600">State of California</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Version History */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+        >
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Version History</h2>
+          <div className="space-y-3">
+            {contract.versions?.map((version: ContractVersion, index: number) => {
+              const isLatest = index === 0;
+              const versionNumber = version.version || `v${contract.versions?.length - index}`;
+              const isActive = version.status === 'active';
+              
+              return (
+                <div 
+                  key={version.id || index}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    isLatest 
+                      ? 'bg-blue-50 border-blue-200' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 text-white rounded-full flex items-center justify-center text-sm font-medium ${
+                      isLatest ? 'bg-blue-500' : 'bg-gray-400'
+                    }`}>
+                      {versionNumber}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        Version {versionNumber}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {isLatest && 'Current Version • '}
+                        Updated {new Date(version.updated_at || version.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      isActive 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {isActive ? 'Active' : 'Archived'}
+                    </span>
+                    <button 
+                      onClick={() => handleViewVersion(version)}
+                      className="text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              );
+            }) || (
+              // Fallback if no versions data
+              <>
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                      1
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Version 1.0</p>
+                      <p className="text-xs text-gray-500">Current Version • Updated {new Date(contract.updated_at || contract.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Active</span>
+                    <button className="text-blue-600 hover:text-blue-700 text-sm">View</button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
 

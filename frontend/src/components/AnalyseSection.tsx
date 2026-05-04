@@ -177,7 +177,7 @@ export default function AnalyseSection({ onAnalysisComplete, onBack, onHome }: A
     }
  
     return (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1">
             <SectionNavigation
                 title="Upload Contracts"
                 subtitle="Upload your contracts for analysis"
@@ -187,7 +187,7 @@ export default function AnalyseSection({ onAnalysisComplete, onBack, onHome }: A
                 onHome={onHome}
             />
             
-            <div className="px-6 py-6">
+            <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             {/* Upload Area */}
             <div

@@ -109,7 +109,7 @@ export default function ContractListSection({ onContractSelect, onBack, onHome }
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1">
       <SectionNavigation
         title="All Contracts"
         subtitle="Browse and manage your contract portfolio"
@@ -141,7 +141,7 @@ export default function ContractListSection({ onContractSelect, onBack, onHome }
         }
       />
       
-      <div className="px-6 py-6">
+      <div className="space-y-6">
 
       {/* Filters and Search */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">

@@ -153,12 +153,14 @@ export default function Home() {
 
         {/* Main Content */}
         <main className="pt-20 h-screen flex">
-          <div className="flex-1 px-6">
+          <div className="flex-1 overflow-y-auto px-6 py-6">
             {mainContent()}
           </div>
-          <ChatSection 
-            analysisResults={analysisResults}
-          />
+          <div className="w-96 border-l border-gray-200 overflow-y-auto">
+            <ChatSection 
+              analysisResults={analysisResults}
+            />
+          </div>
         </main>
     </div>
     </ErrorBoundary>

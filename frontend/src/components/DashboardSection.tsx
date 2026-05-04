@@ -58,7 +58,7 @@ export default function DashboardSection({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1">
       <SectionNavigation
         title="Dashboard Overview"
         subtitle="Monitor your contract intelligence metrics"
@@ -67,7 +67,7 @@ export default function DashboardSection({
         onHome={onHome}
       />
       
-      <div className="max-w-6xl px-6 py-6">
+      <div className="max-w-6xl space-y-6">
 
    
 

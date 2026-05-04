@@ -50,6 +50,18 @@ interface ContractMetadata {
   total_value: string;
 }
 
+interface ContractVersion {
+  id: string;
+  version: string;
+  status: 'active' | 'archived';
+  created_at: string;
+  updated_at: string;
+  file_path: string;
+  file_size: number;
+  changes?: string[];
+  created_by: string;
+}
+
 interface Contract {
   id: string;
   contract_name: string;
@@ -61,6 +73,7 @@ interface Contract {
   file_size: number;
   analysis_status: 'pending' | 'processing' | 'completed' | 'failed';
   analysis_data?: AnalysisData;
+  versions?: ContractVersion[];
 }
 
 interface PaginatedResponse {

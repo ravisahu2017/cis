@@ -365,6 +365,40 @@ async def get_contract(
         logger.error(f"Get contract error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get contract")
 
+@contract_router.get("/contracts/{contract_id}/versions")
+async def get_contract_all_versions(
+    contract_id: str,
+    db: Session = Depends(get_db_session_dep)
+) -> HttpBaseResponse:
+    """
+    Get all versions of a specific contract
+    """
+    try:
+        contract_repo = ContractRepository(db)
+        contract = contract_repo.get_contract(contract_id)
+        
+        if not contract:
+            raise HTTPException(status_code=404, detail="Contract not found")
+            
+        versions = contract_repo.get_contract_versions(contract_id)
+        
+        return HttpBaseResponse(
+            success=True,
+            message="Contract versions retrieved successfully",
+            data=PaginationResponse(
+                total=len(versions),
+                limit=len(versions),
+                offset=0,
+                has_more=False,
+                items=[version.to_dict() for version in versions]
+            )
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get contract versions error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get contract versions")
+
 @contract_router.get("/contracts/{contract_id}/versions/{version_number}")
 async def get_contract_version(
     contract_id: str,

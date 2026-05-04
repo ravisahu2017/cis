@@ -20,7 +20,7 @@ class DatabaseManager:
         if db_path is None:
             # Create data directory if it doesn't exist
             os.makedirs("data", exist_ok=True)
-            db_path = "data/contracts-nogit.db"
+            db_path = "data/contracts.db"
         
         self.db_path = db_path
         self.engine = None

@@ -310,7 +310,7 @@ class ApiService {
 
 
 // For specific backend servers
-const backendUrl = 'https://unhappy-edgy-challenge.ngrok-free.dev';
+let backendUrl = 'https://rvsh.duckdns.org';
 export const backendApi = new ApiService(backendUrl);
 
 

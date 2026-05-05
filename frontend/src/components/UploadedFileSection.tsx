@@ -4,7 +4,7 @@ import contractController from '@/controllers/contract'
 import { 
   Upload, X, File, Loader2, CheckCircle, AlertCircle, Clock 
 } from 'lucide-react';
-import { UploadedFile } from '@/types/contract';
+import { UploadedFile } from '@/models/models';
 
 export interface UploadedFileSectionRef {
     analyzeFile: () => void;

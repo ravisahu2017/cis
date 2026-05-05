@@ -115,7 +115,6 @@ export default function Home() {
       default:
         return <DashboardSection
               // Contracts
-              isLoadingContracts={isLoadingContracts}
               getRiskLevel={getRiskLevel}
               
               // Recent Analyses
@@ -123,10 +122,6 @@ export default function Home() {
               isLoadingAnalyses={isLoadingAnalyses}
               fetchRecentAnalysis={fetchRecentAnalysis}
               
-              onAnalysisComplete={(analysis) => {
-                console.log('Analysis complete:', analysis);
-                setAnalysisResults(analysis);
-              }}
               onDashboardAction={handleDashboardAction}
               onHome={handleHome}
             />;

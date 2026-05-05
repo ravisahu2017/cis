@@ -22,10 +22,7 @@ interface CTA {
 }
 
 interface DashboardSectionProps {
-  analysisResults: AnalysisData | null;
-  
   getRiskLevel: (score: number) => string;
-  
   // Recent Analyses
   recentAnalyses: RecentAnalysis[];
   isLoadingAnalyses: boolean;
@@ -44,11 +41,7 @@ export default function DashboardSection({
 }: DashboardSectionProps) {
 
   // Generate dynamic dashboard tiles based on analysis results
-  const getDashboardTiles = (): DashboardTile[] => {
-    // if (analysisResults) {
-    //   return getTilesFromAnalysis(analysisResults);
-    // }
-    
+  const getDashboardTiles = (): DashboardTile[] => { 
     return getDummyDashboardTiles();
   };
 

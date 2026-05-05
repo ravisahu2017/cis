@@ -121,6 +121,8 @@ interface AnalysisData {
   analysis_timestamp: string;
   executive_summary: string;
   processing_time_ms: number;
+  execution_date?: string;
+  expiry_date?: string;
 }
 
 // Export all interfaces

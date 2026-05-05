@@ -1,6 +1,6 @@
 
 import { motion } from 'framer-motion';
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { 
   Upload, X, File, Loader2, FileText, TrendingUp, CheckCircle, AlertCircle, Clock 
 } from 'lucide-react';
@@ -8,6 +8,7 @@ import { backendApi } from '@/utils/api';
 import contractController from '@/controllers/contract'
 import UploadedFileSection from './UploadedFileSection';
 import SectionNavigation from './SectionNavigation';
+import { UploadedFile, AnalysisData } from '@/models/models';
 
 interface AnalyseSectionProps {
   onAnalysisComplete: (analysis: any) => void;
@@ -72,61 +73,6 @@ export default function AnalyseSection({ onAnalysisComplete, onBack, onHome }: A
         setUploadedFiles(prev => [...prev, ...newFiles]);
     };
 
-    const uploadFile = async (file: UploadedFile) => {
-        // Update status to uploading
-        setUploadedFiles(prev => prev.map(f => 
-            f.id === file.id ? { ...f, uploadStatus: 'uploading', uploadProgress: 0 } : f
-        ));
-
-        try {
-            // Simulate upload progress
-            const progressInterval = setInterval(() => {
-                setUploadedFiles(prev => prev.map(f => {
-                    if (f.id === file.id && f.uploadStatus === 'uploading') {
-                        const newProgress = Math.min((f.uploadProgress || 0) + 10, 90);
-                        return { ...f, uploadProgress: newProgress };
-                    }
-                    return f;
-                }));
-            }, 200);
-
-            // send file for analysis
-            const response = await contractController.analyse(["legal"], file.file);
-
-            clearInterval(progressInterval);
-
-            if (response.success && response.data?.analysis_id) {
-                // Update status to uploaded and start processing
-                setUploadedFiles(prev => prev.map(f => 
-                    f.id === file.id ? { 
-                        ...f, 
-                        uploadStatus: 'uploaded', 
-                        uploadProgress: 100,
-                        analysisId: response.data.analysis_id
-                    } : f
-                ));
-
-                // Start polling for analysis status
-                pollAnalysisStatus(file.id, response.data.analysis_id);
-            } else {
-                throw new Error(response.error || 'Upload failed');
-            }
-        } catch (error) {
-            clearInterval(progressInterval);
-            setUploadedFiles(prev => prev.map(f => 
-                f.id === file.id ? { 
-                    ...f, 
-                    uploadStatus: 'failed',
-                    errorMessage: error instanceof Error ? error.message : 'Upload failed'
-                } : f
-            ));
-        }
-    };
-
-  
-
-
-
     const removeFile = (fileId: string) => {
         setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
     };
@@ -162,9 +108,15 @@ export default function AnalyseSection({ onAnalysisComplete, onBack, onHome }: A
         });
     };
 
-    const uploadedFile = (file: any) => {
+    const uploadedFile = (file: UploadedFile) => {
+        const setFileRef = (el: any) => {
+            if (el) {
+                fileRefs.current[file.id] = el;
+            }
+        };
+        
         return <UploadedFileSection 
-            ref={el => fileRefs.current[file.id] = el}
+            ref={setFileRef}
             fileToUpload={file} 
             onStatusChange={(file) => {
                 console.log('File status changed:', file);
@@ -174,7 +126,7 @@ export default function AnalyseSection({ onAnalysisComplete, onBack, onHome }: A
                 setAnalysisResults(analysis);
             }} 
         />;
-    }
+    };
  
     return (
         <div className="flex-1">

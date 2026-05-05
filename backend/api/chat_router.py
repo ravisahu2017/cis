@@ -9,9 +9,12 @@ from chat import chat_service
 from chat.models import ChatRequest, ChatResponse
 from utils import logger
 
+from utils.auth import verify_api_key
+
 chat_router = APIRouter(
     prefix="/chat",
     tags=["Chat"],
+    dependencies=[Depends(verify_api_key)],
     responses={404: {"description": "Not found"}},
 )
 

@@ -187,19 +187,15 @@ class ContractService:
                 
                 logger.info(f"Starting analysis {analysis_id}")
                 
-                # Perform analysis
-                from contract.mock_data import get_mock_analysis
-                analysis = get_mock_analysis(text_content, analysis_id, analysis_types)
+                # Perform actual analysis using CrewAI
+                session.message = "Running CrewAI analysis agents..."
+                session.last_activity = datetime.now()
                 
-                # Simulate processing time with progress updates
-                for i in range(20):
-                    time.sleep(1)
-                    session.progress = min(90, 10 + i * 4)
-                    session.last_activity = datetime.now()
-                    if i == 10:
-                        session.message = "Analyzing contract clauses..."
-                    elif i == 15:
-                        session.message = "Generating recommendations..."
+                analysis = contract_crew_manager.analyze_contract(
+                    text_content=text_content,
+                    analysis_types=analysis_types,
+                    analysis_id=analysis_id
+                )
                 
                 # Save result
                 session.status = AnalysisStatus.COMPLETED

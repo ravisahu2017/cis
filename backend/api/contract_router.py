@@ -21,9 +21,12 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from utils.common_model import HttpBaseResponse, PaginationResponse
 
+from utils.auth import verify_api_key
+
 contract_router = APIRouter(
     prefix="/contract",
     tags=["Contract"],
+    dependencies=[Depends(verify_api_key)],
     responses={404: {"description": "Not found"}},
 )
 

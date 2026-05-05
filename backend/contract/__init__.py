@@ -8,6 +8,7 @@ from .models import ContractRequest, ContractResponse, ContractMetadata
 from .agents import get_agent_by_type, get_all_contract_agents
 from .crew import contract_crew_manager
 from .contract_utils import ContractUtils
+from .mock_data import get_mock_analysis
 
 __all__ = [
     'contract_service',
@@ -18,6 +19,7 @@ __all__ = [
     'get_all_contract_agents',
     'contract_crew_manager',
     'ContractUtils',
+    'get_mock_analysis'
 ]
 
 # Version info

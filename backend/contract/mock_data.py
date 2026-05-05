@@ -24,18 +24,18 @@ def get_mock_analysis(text_content: str, analysis_id: str, analysis_types: list)
     
     # Create contract metadata
     metadata = ContractMetadata(
-        effective_date=None,
-        expiration_date=None,
+        effective_date=datetime.now(),
+        expiration_date=datetime.now(),
         parties=["Test Party", "Counterparty Inc."],
-        governing_law=None,
-        total_value=None,
-        currency=None
+        governing_law="English Law",
+        total_value=100000,
+        currency="INR"
     )
     
     # Create analysis
     analysis = ContractAnalysis(
-        analysis_timestamp="2024-01-15T10:30:00Z",
-        contract_name=f"Contract Analysis {analysis_id[:8]}",
+        analysis_timestamp=datetime.now(),
+        contract_name=random.choice(["Test Contract 1", "Test Contract 2", "Test Contract 3", "Test Contract 4", "Test Contract 5", "Test Contract 6", "Test Contract 7", "Test Contract 8", "Test Contract 9", "Test Contract 10"]),
         overall_risk_score=risk_scores['overall'],
         risk_level=risk_scores['level'],
         legal_risk_score=risk_scores['legal'],
@@ -133,11 +133,11 @@ def calculate_risk_scores(clauses: list) -> dict:
     
     if not clauses:
         return {
-            'overall': 0,
-            'level': RiskLevel.LOW,
-            'legal': 0,
-            'financial': 0,
-            'operational': 0
+            'overall': random.randint(0, 100),
+            'level': random.choice([RiskLevel.LOW, RiskLevel.MEDIUM, RiskLevel.HIGH]),
+            'legal': random.randint(0, 100),
+            'financial': random.randint(0, 100),
+            'operational': random.randint(0, 100)
         }
     
     # Calculate category scores

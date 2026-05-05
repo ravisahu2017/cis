@@ -10,7 +10,7 @@ import os
 from contract import contract_service
 from contract.models import (
     ContractRequest, ContractResponse, ContractAnalysis, ContractCapabilities, 
-    ContractAnalytics, AnalysisSession, AnalysisType, ContractType
+    ContractAnalytics, AnalysisSession, AnalysisType, ContractType, AnalysisStatus
 )
 from contract.service import contract_service
 from storage.repository import ContractRepository, AnalysisRepository
@@ -37,7 +37,8 @@ async def analyze_contract(
     analysis_types: Optional[List[str]] = Form(["comprehensive"]),
     contract_type_hint: Optional[str] = Form(None),
     user_id: Optional[str] = Form(None),
-    priority: Optional[str] = Form("normal")
+    priority: Optional[str] = Form("normal"),
+    auth_data: tuple = Depends(verify_api_key)
 ) -> HttpBaseResponse:
     """
     Analyze a contract using multi-agent AI system
@@ -90,11 +91,12 @@ async def analyze_contract(
         try:
             # Create contract request
             request = ContractRequest(
+                file_name=file.filename if file else None,
                 file_path=file_path,
                 file_content=file_content,
                 analysis_types=analysis_type_enums,
                 contract_type_hint=contract_type_enum,
-                user_id=user_id,
+                user_id=auth_data[1],  # Extract user_name from verify_api_key
                 priority=priority
             )
             
@@ -118,7 +120,7 @@ async def analyze_contract(
         raise HTTPException(status_code=500, detail=f"Contract analysis failed: {str(e)}")
 
 @contract_router.post("/analyze-text", response_model=ContractResponse)
-async def analyze_contract_text(request: ContractRequest) -> ContractResponse:
+async def analyze_contract_text(request: ContractRequest,auth_data: tuple = Depends(verify_api_key)) -> ContractResponse:
     """
     Analyze contract text directly (alternative to file upload)
     
@@ -135,7 +137,8 @@ async def analyze_contract_text(request: ContractRequest) -> ContractResponse:
                 status_code=400,
                 detail="Insufficient text content (minimum 100 characters required)"
             )
-        
+
+        request.user_id=auth_data[1]
         # Process analysis
         response = contract_service.analyze_contract(request)
         
@@ -201,28 +204,23 @@ async def contract_analytics() -> Dict[str, Any]:
         logger.error(f"Contract analytics error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get analytics")
 
-@contract_router.get("/sessions")
-async def get_contract_sessions() -> Dict[str, Any]:
+@contract_router.get("/sessions",response_model=HttpBaseResponse)
+async def get_contract_sessions(
+    status: Optional[str] = None,
+    auth_data: tuple = Depends(verify_api_key)
+) -> HttpBaseResponse:
     """
-    Get all active contract analysis sessions
+    Get active contract analysis sessions for the current user
     """
     try:
-        sessions = contract_service.get_active_sessions()
-        return {
-            "active_sessions": len(sessions),
-            "sessions": [
-                {
-                    "session_id": session.session_id,
-                    "user_id": session.user_id,
-                    "analyses_completed": session.analyses_completed,
-                    "total_processing_time_ms": session.total_processing_time_ms,
-                    "contract_types_analyzed": [ct.value for ct in session.contract_types_analyzed],
-                    "created_at": session.created_at.isoformat(),
-                    "status": session.status
-                }
-                for session in sessions
-            ]
-        }
+        current_user = auth_data[1]
+        sessions = contract_service.get_active_sessions(user_id=current_user, status=status)
+                    
+        return HttpBaseResponse(
+            success=True,
+            message="Contract sessions retrieved successfully",
+            data=sessions
+        )
     except Exception as e:
         logger.error(f"Contract sessions error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get sessions")
@@ -309,6 +307,7 @@ async def get_contracts(
     user_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
+    auth_data: tuple = Depends(verify_api_key),
     db: Session = Depends(get_db_session_dep)
 ) -> HttpBaseResponse   :
     """
@@ -319,21 +318,24 @@ async def get_contracts(
         
         if user_id:
             contracts = contract_repo.get_user_contracts(user_id, limit, offset)
-        else:
-            # Get all contracts (admin)
-            contracts = contract_repo.search_contracts("", {}, limit, offset)
-        
-        response = HttpBaseResponse(
-            success=True,
-            message="Contracts retrieved successfully",
-            data=PaginationResponse(
-                total=len(contracts),
-                limit=limit,
-                offset=offset,
-                has_more=len(contracts) > limit,
-                items=[contract.to_dict() for contract in contracts]
+            response = HttpBaseResponse(
+                success=True,
+                message="Contracts retrieved successfully",
+                data=PaginationResponse(
+                    total=len(contracts),
+                    limit=limit,
+                    offset=offset,
+                    has_more=len(contracts) > limit,
+                    items=[contract.to_dict() for contract in contracts]
+                )
             )
-        )
+        else:
+            response = HttpBaseResponse(
+                success=False,
+                message="User id is required",
+                data=None
+            )
+        
         return response
         
     except Exception as e:

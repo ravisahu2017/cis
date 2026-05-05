@@ -78,6 +78,7 @@ class ContractAnalysis(BaseModel):
 
 class ContractRequest(BaseModel):
     """Incoming contract analysis request"""
+    file_name: Optional[str] = Field(default=None, description="File name")
     file_path: Optional[str] = Field(default=None, description="Path to contract file")
     file_content: Optional[str] = Field(default=None, description="Raw text content of contract")
     analysis_types: List[AnalysisType] = Field(default=[AnalysisType.COMPREHENSIVE], description="Types of analysis to perform")
@@ -110,24 +111,24 @@ class ContractAnalytics(BaseModel):
     agent_usage: Dict[str, int] = Field(default_factory=dict)
     common_clause_types: Dict[str, int] = Field(default_factory=dict)
 
-class AnalysisSession(BaseModel):
-    """Contract analysis session information"""
-    session_id: str = Field(description="Unique session identifier")
-    user_id: Optional[str] = Field(default=None, description="User identifier")
-    created_at: datetime = Field(default_factory=datetime.now)
-    last_activity: datetime = Field(default_factory=datetime.now)
-    analyses_completed: int = Field(default=0)
-    total_processing_time_ms: int = Field(default=0)
-    contract_types_analyzed: List[ContractType] = Field(default_factory=list)
-    status: str = Field(default="active", description="Session status")
-    current_analysis_id: Optional[str] = Field(default=None, description="Current analysis ID")
-    progress: int = Field(default=0, description="Analysis progress (0-100)")
-    message: str = Field(default="Ready", description="Current status message")
-    result: Optional[ContractAnalysis] = Field(default=None, description="Analysis result when completed")
-
 class AnalysisStatus(str, Enum):
     """Analysis processing status"""
     QUEUED = "queued"
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    
+class AnalysisSession(BaseModel):
+    """Contract analysis session information"""
+    analysis_id: str = Field(description="Unique analysis identifier")
+    user_id: Optional[str] = Field(default=None, description="User identifier")
+    session_id: str = Field(description="Unique session identifier")
+    progress: int = Field(default=0, description="Analysis progress (0-100)")
+    status: AnalysisStatus = Field(default=AnalysisStatus.QUEUED)
+    total_processing_time_ms: int = Field(default=0)
+    result: Optional[ContractAnalysis] = Field(default=None, description="Analysis result when completed")
+    last_activity: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    file_name: Optional[str] = Field(default=None, description="File name")
+    file_path: Optional[str] = Field(default=None, description="File path")
+    

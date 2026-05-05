@@ -3,6 +3,7 @@ Contract Layer - Main Service
 Orchestrates contract analysis functionality and provides API interface
 """
 
+import os
 import uuid
 import time
 import asyncio
@@ -17,6 +18,7 @@ from .models import (
 from .contract_utils import ContractUtils
 from .crew import contract_crew_manager
 from .agents import get_agent_capabilities
+from .mock_data import get_mock_analysis
 from utils import logger, read_pdf, read_docx, read_txt, read_image, HttpBaseResponse, QueuedResponse
 from storage.repository import ContractRepository, AnalysisRepository
 from storage.database import get_database
@@ -55,18 +57,19 @@ class ContractService:
             analysis_types = self._validate_analysis_types(request.analysis_types)
             
             # Create session (this is our job tracker)
+            if request.user_id is None:
+                raise ValueError("User id is required")
             session = AnalysisSession(
-                session_id=analysis_id,  # Use analysis_id as session_id
-                user_id=request.user_id or "default",
-                created_at=datetime.now(),
-                last_activity=datetime.now(),
-                analyses_completed=0,
-                total_processing_time_ms=0,
-                contract_types_analyzed=[],
+                file_name=request.file_name,
+                file_path=request.file_path,
+                session_id=analysis_id, # Use analysis_id as session_id
+                analysis_id=analysis_id,  
+                user_id=request.user_id,
+                created_at=datetime.utcnow(),
+                last_activity=datetime.utcnow(),
                 status=AnalysisStatus.QUEUED,
-                current_analysis_id=analysis_id,
                 progress=0,
-                message="Analysis queued for processing"
+                total_processing_time_ms=0,
             )
             
             # Add to queue
@@ -89,7 +92,7 @@ class ContractService:
                 data=QueuedResponse(
                     analysis_id=analysis_id,
                     status=session.status,
-                    message=session.message,
+                    message="Your analysis has been queued for processing.",
                     estimated_wait_time=len(self.analysis_queue) * 20
                 ),
                 response_time_ms=int((time.time() - start_time) * 1000)
@@ -141,16 +144,14 @@ class ContractService:
             progress = session.progress
             if session.status == AnalysisStatus.PROCESSING and session.current_analysis_id:
                 # Estimate progress based on time
-                elapsed = (datetime.now() - session.last_activity).total_seconds()
+                elapsed = (datetime.utcnow() - session.last_activity).total_seconds()
                 progress = min(95, int((elapsed / 20) * 100))
             
             response_data = {
                 'analysis_id': analysis_id,
                 'status': session.status,
                 'progress': progress,
-                'message': session.message,
                 'created_at': session.created_at.timestamp(),
-                'queue_position': None
             }
             
             # Add result if completed
@@ -181,36 +182,35 @@ class ContractService:
             try:
                 # Update status
                 session.status = AnalysisStatus.PROCESSING
-                session.message = "Processing analysis..."
                 session.progress = 10
-                session.last_activity = datetime.now()
+                session.last_activity = datetime.utcnow()
                 
                 logger.info(f"Starting analysis {analysis_id}")
                 
                 # Perform actual analysis using CrewAI
-                session.message = "Running CrewAI analysis agents..."
-                session.last_activity = datetime.now()
-                
-                analysis = contract_crew_manager.analyze_contract(
-                    text_content=text_content,
-                    analysis_types=analysis_types,
-                    analysis_id=analysis_id
-                )
+                if os.getenv("CIS_MOCK")==0:
+                    analysis = contract_crew_manager.analyze_contract(
+                        text_content=text_content,
+                        analysis_types=analysis_types,
+                        analysis_id=analysis_id
+                    )
+                else:
+                    logger.info("Using mocked analysis for test purpose")
+                    analysis = get_mock_analysis(text_content, analysis_id, analysis_types)
+                    time.sleep(20)
                 
                 # Save result
                 session.status = AnalysisStatus.COMPLETED
-                session.message = "Analysis completed successfully"
                 session.progress = 100
                 session.result = analysis
-                session.last_activity = datetime.now()
+                session.last_activity = datetime.utcnow()
                 
                 logger.info(f"Analysis {analysis_id} completed")
                 
             except Exception as e:
                 logger.error(f"Analysis {analysis_id} failed: {str(e)}")
                 session.status = AnalysisStatus.FAILED
-                session.message = f"Analysis failed: {str(e)}"
-                session.last_activity = datetime.now()
+                session.last_activity = datetime.utcnow()
             
             finally:
                 # Remove from active sessions after some time
@@ -368,9 +368,16 @@ class ContractService:
         """Retrieve analysis session by ID"""
         return self.active_sessions.get(session_id)
     
-    def get_active_sessions(self) -> List[AnalysisSession]:
-        """Get all active sessions"""
-        return list(self.active_sessions.values())
+    def get_active_sessions(self, user_id: str, status: Optional[str] = None) -> List[AnalysisSession]:
+        """Get all active and queued sessions for a user"""
+        sessions = list(self.active_sessions.values())
+        
+        # Include queued sessions
+        for queue_item in self.analysis_queue:
+            if 'session' in queue_item:
+                sessions.append(queue_item['session'])
+                
+        return [session for session in sessions if session.user_id == user_id and (status is None or session.status == status)]
     
     def cleanup_sessions(self):
         """Remove inactive sessions"""

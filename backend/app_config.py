@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from utils import logger
 
 def create_app() -> FastAPI:
@@ -22,18 +23,9 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json"
     )
     
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # In production, specify your frontend domain
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
     
     # Add custom OpenAPI docs
     setup_custom_docs(app)
-    
     return app
 
 def setup_custom_docs(app: FastAPI):
@@ -94,7 +86,7 @@ def setup_custom_docs(app: FastAPI):
             routes=app.routes,
             servers=[
                 {"url": "http://localhost:8001", "description": "Development server"},
-                {"url": "https://unhappy-edgy-challenge.ngrok-free.dev", "description": "Production server"},
+                {"url": "https://rvsh.duckdns.org", "description": "Production server"},
             ],
             contact={
                 "name": "Ravi Sahu",
@@ -114,16 +106,12 @@ def register_routers(app: FastAPI):
     from api.contract_router import contract_router
     from api.file_router import file_router
     from api.health_router import health_router
-    from api.test_router import test_router
-    from api.db_test_router import db_test_router
     
     # Register routers
     app.include_router(chat_router)
     app.include_router(contract_router)
     app.include_router(file_router)
     app.include_router(health_router)
-    app.include_router(test_router)
-    app.include_router(db_test_router)
     
     logger.info("All API routers registered successfully")
 
@@ -134,28 +122,11 @@ def setup_middleware(app: FastAPI):
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
+        allow_origin_regex=".*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
-    # Logging middleware
-    @app.middleware("http")
-    async def log_requests(request, call_next):
-        """Log all requests"""
-        logger.info(f"Request: {request.method} {request.url}")
-        response = await call_next(request)
-        logger.info(f"Response: {response.status_code}")
-        return response
-    
-    # Concurrency middleware
-    @app.middleware("http")
-    async def add_concurrency_headers(request, call_next):
-        """Add headers to handle concurrent requests"""
-        response = await call_next(request)
-        response.headers["X-Content-Type"] = "application/json"
-        response.headers["Keep-Alive"] = "timeout=5, max=100"
-        return response
     
     # Security headers middleware
     @app.middleware("http")
@@ -173,14 +144,23 @@ def setup_exception_handlers(app: FastAPI):
     @app.exception_handler(404)
     async def not_found_handler(request, exc):
         logger.warning(f"404 Not Found: {request.url}")
-        return {"error": "Resource not found", "path": str(request.url)}
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Resource not found", "path": str(request.url)}
+        )
     
     @app.exception_handler(500)
     async def internal_error_handler(request, exc):
         logger.error(f"500 Internal Error: {request.url} - {str(exc)}")
-        return {"error": "Internal server error", "path": str(request.url)}
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal server error", "path": str(request.url)}
+        )
     
     @app.exception_handler(Exception)
     async def general_exception_handler(request, exc):
         logger.error(f"Unhandled Exception: {request.url} - {str(exc)}")
-        return {"error": "An unexpected error occurred", "path": str(request.url)}
+        return JSONResponse(
+            status_code=500,
+            content={"error": "An unexpected error occurred", "path": str(request.url)}
+        )

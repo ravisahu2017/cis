@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   backend:
-    build: .
+    build:
+      context: .
+      target: prod
     container_name: cis-backend
     ports:
       - "8001:8001"
